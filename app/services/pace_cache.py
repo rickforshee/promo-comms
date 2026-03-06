@@ -7,6 +7,12 @@ and upserts into local PostgreSQL cache tables for fast access.
 The cache ensures the platform remains functional if Pace is temporarily
 unavailable, and avoids hitting Pace on every page load.
 
+Job cache note:
+  Jobs are identified as promo by querying JobPart filtered on
+  @jobProductType = 'smPromo'. Job-level fields are pulled via traversal
+  XPaths (e.g. job/@description). The cache stores one row per job number;
+  if a job has multiple smPromo parts, the last part's values win on upsert.
+
 Refresh strategy:
   - Full refresh: replaces all cache data (used on first run)
   - Incremental refresh: fetches only recently modified records (scheduled)
@@ -28,21 +34,24 @@ from app.services.pace_client import PaceClient
 logger = logging.getLogger(__name__)
 
 
-def _safe_date(value: str | None) -> date | None:
-    """Parse ISO date string from Pace, return None on failure."""
+def _safe_date(value: Any) -> date | None:
+    """Parse date/datetime from Pace, return None on failure."""
     if not value:
         return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
     try:
-        # Pace returns dates like "2024-03-15T00:00:00Z"
         return datetime.fromisoformat(
-            value.replace("Z", "+00:00")
+            str(value).replace("Z", "+00:00")
         ).date()
     except (ValueError, AttributeError):
         return None
 
 
-def _safe_decimal(value: str | None) -> Decimal | None:
-    """Parse decimal string, return None on failure."""
+def _safe_decimal(value: Any) -> Decimal | None:
+    """Parse decimal value, return None on failure."""
     if not value:
         return None
     try:
@@ -51,20 +60,20 @@ def _safe_decimal(value: str | None) -> Decimal | None:
         return None
 
 
-def _safe_int(value: str | None) -> int | None:
-    """Parse integer string, return None on failure."""
+def _safe_int(value: Any) -> int | None:
+    """Parse integer value, return None on failure."""
     if not value:
         return None
     try:
-        return int(float(value))
+        return int(float(str(value)))
     except (ValueError, TypeError):
         return None
 
 
-def _safe_bool(value: str | None) -> bool | None:
+def _safe_bool(value: Any) -> bool | None:
     if not value:
         return None
-    return value.lower() in ("true", "1", "yes")
+    return str(value).lower() in ("true", "1", "yes")
 
 
 class PaceCacheService:
@@ -74,12 +83,12 @@ class PaceCacheService:
     so partial runs are safe and idempotent.
     """
 
-    # Batch size for loadValueObjects pagination
+    # Records per page for pagination
     PAGE_SIZE = 50
 
     def __init__(self, db: Session):
         self.db     = db
-        self.client = PaceClient()
+        self.client = PaceClient.from_env()
 
     # ─── Public Interface ─────────────────────────────────────────────────────
 
@@ -103,125 +112,135 @@ class PaceCacheService:
         )
         return summary
 
-    def refresh_jobs(self, xpath_filter: str = "@adminStatus != 'X'") -> int:
+    def refresh_jobs(self) -> int:
         """
-        Refresh pace_job_cache.
-        Default filter excludes archived/deleted jobs.
+        Refresh pace_job_cache by querying JobPart filtered on smPromo product type.
+        Excludes archived jobs (job/@adminStatus != 'X').
         Returns count of records upserted.
         """
-        logger.info("Refreshing job cache...")
-        fields = [
-            {"name": "jobNumber",         "xpath": "@job"},
-            {"name": "description",       "xpath": "@description"},
-            {"name": "customerId",        "xpath": "customer/@id"},
-            {"name": "adminStatus",       "xpath": "@adminStatus"},
-            {"name": "dateSetup",         "xpath": "@dateSetup"},
-            {"name": "promiseDate",       "xpath": "@promiseDate"},
-            {"name": "scheduledShipDate", "xpath": "@scheduledShipDate"},
-            {"name": "salespersonId",     "xpath": "salesperson/@id"},
-            {"name": "csrId",             "xpath": "csr/@id"},
-            {"name": "poNum",             "xpath": "@poNum"},
-            {"name": "contactFirstName",  "xpath": "@contactFirstName"},
-            {"name": "contactLastName",   "xpath": "@contactLastName"},
-            {"name": "jobValue",          "xpath": "@jobValue"},
-            {"name": "totalParts",        "xpath": "@totalParts"},
-            {"name": "lastModified",      "xpath": "@lastModified"},
-        ]
+        logger.info("Refreshing job cache (via JobPart, smPromo filter)...")
+
+        fields = {
+            "jobNumber":         "job/@job",
+            "jobPartNum":        "@jobPart",
+            "jobProductType":    "@jobProductType",
+            "qtyOrdered":        "@qtyOrdered",
+            "quotedPrice":       "@quotedPrice",
+            "description":       "job/@description",
+            "adminStatus":       "job/@adminStatus",
+            "customerId":        "job/customer/@id",
+            "dateSetup":         "job/@dateSetup",
+            "promiseDate":       "job/@promiseDate",
+            "scheduledShipDate": "job/@scheduledShipDate",
+            "salespersonId":     "job/salesperson/@id",
+            "csrId":             "job/csr/@id",
+            "poNum":             "job/@poNum",
+            "contactFirstName":  "job/@contactFirstName",
+            "contactLastName":   "job/@contactLastName",
+            "jobValue":          "job/@jobValue",
+            "totalParts":        "job/@totalParts",
+            "lastModified":      "job/@lastModified",
+        }
+
         return self._paginate_and_upsert(
-            object_type  = "Job",
-            fields       = fields,
-            xpath_filter = xpath_filter,
-            mapper       = self._map_job,
-            model        = PaceJobCache,
-            pk_field     = "job_number",
+            object_type = "JobPart",
+            fields      = fields,
+            builder_fn  = lambda model: (
+                model
+                .filter("@jobProductType", "smPromo")
+                .filter("job/@adminStatus", "!=", "X")
+            ),
+            mapper      = self._map_job,
+            model       = PaceJobCache,
+            pk_field    = "job_number",
         )
 
-    def refresh_purchase_orders(
-        self,
-        xpath_filter: str = "@orderStatus != 'X'",
-    ) -> int:
+    def refresh_purchase_orders(self) -> int:
         """
         Refresh pace_po_cache.
-        Default filter excludes cancelled/deleted POs.
+        Excludes cancelled/deleted POs (orderStatus != 'X').
         """
         logger.info("Refreshing PO cache...")
-        fields = [
-            {"name": "poNumber",          "xpath": "@poNumber"},
-            {"name": "vendorId",          "xpath": "vendor/@id"},
-            {"name": "customerId",        "xpath": "customer/@id"},
-            {"name": "orderStatus",       "xpath": "@orderStatus"},
-            {"name": "orderTotal",        "xpath": "@orderTotal"},
-            {"name": "dateEntered",       "xpath": "@dateEntered"},
-            {"name": "dateConfirmed",     "xpath": "@dateConfirmed"},
-            {"name": "dateLastReceipt",   "xpath": "@dateLastReceipt"},
-            {"name": "buyer",             "xpath": "buyer/@id"},
-            {"name": "confirmedBy",       "xpath": "@confirmedBy"},
-            {"name": "notes",             "xpath": "@notes"},
-            {"name": "contactFirstName",  "xpath": "@contactFirstName"},
-            {"name": "contactLastName",   "xpath": "@contactLastName"},
-            {"name": "lastModified",      "xpath": "@lastModified"},
-        ]
+
+        fields = {
+            "poNumber":        "@poNumber",
+            "vendorId":        "vendor/@id",
+            "customerId":      "customer/@id",
+            "orderStatus":     "@orderStatus",
+            "orderTotal":      "@orderTotal",
+            "dateEntered":     "@dateEntered",
+            "dateConfirmed":   "@dateConfirmed",
+            "dateLastReceipt": "@dateLastReceipt",
+            "buyer":           "buyer/@id",
+            "confirmedBy":     "@confirmedBy",
+            "notes":           "@notes",
+            "firstName":       "@contactFirstName",
+            "lastName":        "@contactLastName",
+            "lastModified":    "@lastModified",
+        }
+
         return self._paginate_and_upsert(
-            object_type  = "PurchaseOrder",
-            fields       = fields,
-            xpath_filter = xpath_filter,
-            mapper       = self._map_po,
-            model        = PacePOCache,
-            pk_field     = "po_number",
+            object_type = "PurchaseOrder",
+            fields      = fields,
+            builder_fn  = lambda model: model.filter("@orderStatus", "!=", "X"),
+            mapper      = self._map_po,
+            model       = PacePOCache,
+            pk_field    = "po_number",
         )
 
-    def refresh_vendors(self, xpath_filter: str = "@active = 'true'") -> int:
-        """Refresh pace_vendor_cache. Default filter: active vendors only."""
+    def refresh_vendors(self) -> int:
+        """Refresh pace_vendor_cache. Active vendors only."""
         logger.info("Refreshing vendor cache...")
-        fields = [
-            {"name": "vendorId",         "xpath": "@id"},
-            {"name": "firstName",        "xpath": "@contactFirstName"},
-            {"name": "lastName",         "xpath": "@contactLastName"},
-            {"name": "title",            "xpath": "@contactTitle"},
-            {"name": "email",            "xpath": "@email"},
-            {"name": "fax",              "xpath": "@faxNumber"},
-            {"name": "address1",         "xpath": "@address1"},
-            {"name": "city",             "xpath": "@city"},
-            {"name": "state",            "xpath": "state/@id"},
-            {"name": "active",           "xpath": "@active"},
-            {"name": "customerNumber",   "xpath": "@customerNumber"},
-            {"name": "defaultCurrency",  "xpath": "@defaultCurrency"},
-        ]
+
+        fields = {
+            "vendorId":        "@id",
+            "firstName":       "@contactFirstName",
+            "lastName":        "@contactLastName",
+            "title":           "@contactTitle",
+            "email":           "@email",
+            "fax":             "@faxNumber",
+            "address1":        "@address1",
+            "city":            "@city",
+            "state":           "state/@id",
+            "active":          "@active",
+            "customerNumber":  "@customerNumber",
+            "defaultCurrency": "@defaultCurrency",
+        }
+
         return self._paginate_and_upsert(
-            object_type  = "Vendor",
-            fields       = fields,
-            xpath_filter = xpath_filter,
-            mapper       = self._map_vendor,
-            model        = PaceVendorCache,
-            pk_field     = "vendor_id",
+            object_type = "Vendor",
+            fields      = fields,
+            builder_fn  = lambda model: model.filter("@active", True),
+            mapper      = self._map_vendor,
+            model       = PaceVendorCache,
+            pk_field    = "vendor_id",
         )
 
-    def refresh_customers(
-        self,
-        xpath_filter: str = "@customerStatus != 'I'",
-    ) -> int:
-        """Refresh pace_customer_cache. Default filter: non-inactive customers."""
+    def refresh_customers(self) -> int:
+        """Refresh pace_customer_cache. Non-inactive customers only."""
         logger.info("Refreshing customer cache...")
-        fields = [
-            {"name": "customerId",      "xpath": "@id"},
-            {"name": "custName",        "xpath": "@custName"},
-            {"name": "address1",        "xpath": "@address1"},
-            {"name": "city",            "xpath": "@city"},
-            {"name": "state",           "xpath": "state/@id"},
-            {"name": "email",           "xpath": "@email"},
-            {"name": "phone",           "xpath": "@phoneNumber"},
-            {"name": "customerStatus",  "xpath": "@customerStatus"},
-            {"name": "firstName",       "xpath": "@contactFirstName"},
-            {"name": "lastName",        "xpath": "@contactLastName"},
-            {"name": "accountBalance",  "xpath": "@accountBalance"},
-        ]
+
+        fields = {
+            "customerId":     "@id",
+            "custName":       "@custName",
+            "address1":       "@address1",
+            "city":           "@city",
+            "state":          "state/@id",
+            "email":          "@email",
+            "phone":          "@phoneNumber",
+            "customerStatus": "@customerStatus",
+            "firstName":      "@contactFirstName",
+            "lastName":       "@contactLastName",
+            "accountBalance": "@accountBalance",
+        }
+
         return self._paginate_and_upsert(
-            object_type  = "Customer",
-            fields       = fields,
-            xpath_filter = xpath_filter,
-            mapper       = self._map_customer,
-            model        = PaceCustomerCache,
-            pk_field     = "customer_id",
+            object_type = "Customer",
+            fields      = fields,
+            builder_fn  = lambda model: model.filter("@customerStatus", "!=", "I"),
+            mapper      = self._map_customer,
+            model       = PaceCustomerCache,
+            pk_field    = "customer_id",
         )
 
     # ─── Pagination + Upsert ─────────────────────────────────────────────────
@@ -229,29 +248,31 @@ class PaceCacheService:
     def _paginate_and_upsert(
         self,
         object_type: str,
-        fields: list[dict],
-        xpath_filter: str,
+        fields: dict,
+        builder_fn,
         mapper,
         model,
         pk_field: str,
     ) -> int:
         """
-        Page through all records from Pace and upsert each batch into the DB.
-        Returns total records upserted.
+        Page through all records from Pace using the fluent API and upsert
+        each batch into the DB. Continues until a page returns fewer records
+        than PAGE_SIZE. Returns total records upserted.
         """
-        offset       = 0
+        offset         = 0
         total_upserted = 0
+        pace_model     = self.client.model(object_type)
 
         while True:
-            result = self.client.load_value_objects(
-                object_type  = object_type,
-                fields       = fields,
-                xpath_filter = xpath_filter,
-                offset       = offset,
-                limit        = self.PAGE_SIZE,
+            collection = (
+                builder_fn(pace_model)
+                .load(fields)
+                .offset(offset)
+                .limit(self.PAGE_SIZE)
+                .find()
             )
 
-            objects = result["objects"]
+            objects = collection.to_list()
             if not objects:
                 break
 
@@ -262,7 +283,9 @@ class PaceCacheService:
                     if row and row.get(pk_field):
                         rows.append(row)
                 except Exception as e:
-                    logger.warning(f"Failed to map {object_type} record: {e} — {obj}")
+                    logger.warning(
+                        f"Failed to map {object_type} record: {e} — {obj}"
+                    )
 
             if rows:
                 self._upsert_batch(model, rows, pk_field)
@@ -273,11 +296,15 @@ class PaceCacheService:
                 f"fetched={len(objects)}, upserted={len(rows)}"
             )
 
-            offset += self.PAGE_SIZE
-            if offset >= result["total_records"]:
+            # Stop when we get a partial page — no more records
+            if len(objects) < self.PAGE_SIZE:
                 break
 
-        logger.info(f"{object_type} cache refresh complete — {total_upserted} records")
+            offset += self.PAGE_SIZE
+
+        logger.info(
+            f"{object_type} cache refresh complete — {total_upserted} records"
+        )
         return total_upserted
 
     def _upsert_batch(self, model, rows: list[dict], pk_field: str):
@@ -319,32 +346,35 @@ class PaceCacheService:
             "contact_last_name":   obj.get("contactLastName"),
             "job_value":           _safe_decimal(obj.get("jobValue")),
             "total_parts":         _safe_int(obj.get("totalParts")),
+            "job_product_type":    obj.get("jobProductType"),
+            "quoted_price":        _safe_decimal(obj.get("quotedPrice")),
+            "qty_ordered":         _safe_decimal(obj.get("qtyOrdered")),
             "last_modified":       _safe_date(obj.get("lastModified")),
         }
 
     @staticmethod
     def _map_po(obj: dict[str, Any]) -> dict:
         return {
-            "po_number":           obj.get("poNumber"),
-            "vendor_id":           obj.get("vendorId"),
-            "customer_id":         obj.get("customerId"),
-            "order_status":        obj.get("orderStatus"),
-            "order_total":         _safe_decimal(obj.get("orderTotal")),
-            "date_entered":        _safe_date(obj.get("dateEntered")),
-            "date_confirmed":      _safe_date(obj.get("dateConfirmed")),
-            "date_last_receipt":   _safe_date(obj.get("dateLastReceipt")),
-            "buyer":               obj.get("buyer"),
-            "confirmed_by":        obj.get("confirmedBy"),
-            "notes":               obj.get("notes"),
-            "contact_first_name":  obj.get("contactFirstName"),
-            "contact_last_name":   obj.get("contactLastName"),
-            "last_modified":       _safe_date(obj.get("lastModified")),
+            "po_number":          obj.get("poNumber"),
+            "vendor_id":          obj.get("vendorId"),
+            "customer_id":        obj.get("customerId"),
+            "order_status":       obj.get("orderStatus"),
+            "order_total":        _safe_decimal(obj.get("orderTotal")),
+            "date_entered":       _safe_date(obj.get("dateEntered")),
+            "date_confirmed":     _safe_date(obj.get("dateConfirmed")),
+            "date_last_receipt":  _safe_date(obj.get("dateLastReceipt")),
+            "buyer":              obj.get("buyer"),
+            "confirmed_by":       obj.get("confirmedBy"),
+            "notes":              obj.get("notes"),
+            "contact_first_name": obj.get("firstName"),
+            "contact_last_name":  obj.get("lastName"),
+            "last_modified":      _safe_date(obj.get("lastModified")),
         }
 
     @staticmethod
     def _map_vendor(obj: dict[str, Any]) -> dict:
         return {
-            "vendor_id":         obj.get("vendorId"),
+            "vendor_id":          obj.get("vendorId"),
             "contact_first_name": obj.get("firstName"),
             "contact_last_name":  obj.get("lastName"),
             "contact_title":      obj.get("title"),
