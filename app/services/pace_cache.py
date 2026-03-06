@@ -132,7 +132,7 @@ class PaceCacheService:
             "dateSetup":         "job/@dateSetup",
             "promiseDate":       "job/@promiseDate",
             "scheduledShipDate": "job/@scheduledShipDate",
-            "salespersonId":     "job/salesperson/@id",
+            "salesPersonId":     "job/salesPerson/@id",
             "csrId":             "job/csr/@id",
             "poNum":             "job/@poNum",
             "contactFirstName":  "job/@contactFirstName",
