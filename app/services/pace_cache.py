@@ -307,6 +307,11 @@ class PaceCacheService:
         return total_upserted
 
     def _upsert_batch(self, model, rows: list[dict], pk_field: str):
+        # Deduplicate by PK — Pace returns one row per JobPart; last part wins
+        seen = {}
+        for row in rows:
+            seen[row[pk_field]] = row
+        rows = list(seen.values())
         """
         Upsert a batch of row dicts into the given model's table.
         Uses PostgreSQL INSERT ... ON CONFLICT DO UPDATE.
