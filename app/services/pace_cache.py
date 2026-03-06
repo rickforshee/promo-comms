@@ -139,7 +139,6 @@ class PaceCacheService:
             "contactLastName":   "job/@contactLastName",
             "jobValue":          "job/@jobValue",
             "totalParts":        "job/@totalParts",
-            "lastModified":      "job/@lastModified",
         }
 
         return self._paginate_and_upsert(
@@ -349,7 +348,6 @@ class PaceCacheService:
             "job_product_type":    obj.get("jobProductType"),
             "quoted_price":        _safe_decimal(obj.get("quotedPrice")),
             "qty_ordered":         _safe_decimal(obj.get("qtyOrdered")),
-            "last_modified":       _safe_date(obj.get("lastModified")),
         }
 
     @staticmethod
