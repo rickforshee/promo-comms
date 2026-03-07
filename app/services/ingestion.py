@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app import config
 from app.models import (
     Email, Thread, Attachment, ThreadJobLink, ThreadPOLink,
-    EmailDirection, ImportSource, LinkSource, AttachmentType,
+    EmailDirection, ImportSource, LinkSource, AttachmentType, PacePOCache,
 )
 from app.services.graph_client import GraphClient
 from app.services.pattern_matcher import extract_all
