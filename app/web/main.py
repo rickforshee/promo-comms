@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 
-from app.web.routes import auth, threads, assignment, notes
+from app.web.routes import auth, threads, assignment, notes, links
 
 BASE_DIR = Path(__file__).parent
 
@@ -20,6 +20,7 @@ app.include_router(auth.router)
 app.include_router(threads.router)
 app.include_router(assignment.router)
 app.include_router(notes.router)
+app.include_router(links.router)
 
 
 @app.on_event("startup")

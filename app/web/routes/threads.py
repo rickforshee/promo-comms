@@ -9,6 +9,7 @@ from app import config
 from app.models import (
     Thread, Email, ThreadJobLink, ThreadPOLink, ThreadTrackingLink,
     PaceJobCache, PacePOCache, PaceVendorCache, PaceCustomerCache,
+    LinkSource, User,
 )
 from app.web.auth import get_current_user, get_db
 from app.models import User
@@ -35,6 +36,9 @@ def load_status_maps() -> None:
             po_rows  = conn.execute(text("SELECT sysstatusid, sysdescription FROM postatus")).fetchall()
         _job_status_map = {str(r.sysstatusid): r.sysdescription for r in job_rows}
         _po_status_map  = {str(r.sysstatusid): r.sysdescription for r in po_rows}
+        # Share with links router
+        from app.web.routes.links import set_status_maps
+        set_status_maps(_job_status_map, _po_status_map)
     except Exception as e:
         import logging
         logging.getLogger(__name__).warning(f"Could not load status maps: {e}")
@@ -291,7 +295,9 @@ async def thread_detail(
         .all()
     )
 
-    # Linked jobs
+    # Jobs and POs are rendered via the links panel (links_panel.html)
+    from app.web.routes.links import _render_links_panel as _build_links
+    # Build links context inline for template include
     jobs = []
     for link in db.query(ThreadJobLink).filter(ThreadJobLink.thread_id == thread_id).all():
         job = db.query(PaceJobCache).filter(PaceJobCache.job_number == link.job_number).first()
@@ -302,12 +308,13 @@ async def thread_detail(
         ).first() if job.customer_id else None
         jobs.append({
             "job":           job,
+            "link":          link,
             "status_label":  _job_status_map.get(str(job.admin_status), job.admin_status or "—"),
             "customer_name": customer.cust_name if customer else (job.customer_id or "—"),
             "pace_url":      f"{PACE_BASE}/Job/detail/{job.job_number}",
+            "is_manual":     link.link_source == LinkSource.manual,
         })
 
-    # Linked POs
     pos = []
     for link in db.query(ThreadPOLink).filter(ThreadPOLink.thread_id == thread_id).all():
         po = db.query(PacePOCache).filter(PacePOCache.po_number == link.po_number).first()
@@ -324,10 +331,12 @@ async def thread_detail(
             vendor_name = po.vendor_id or "—"
         pos.append({
             "po":           po,
+            "link":         link,
             "status_label": _po_status_map.get(str(po.order_status), po.order_status or "—"),
             "vendor_name":  vendor_name,
             "pace_url":     f"{PACE_BASE}/PurchaseOrder/detail/{po.pace_internal_id}"
                             if po.pace_internal_id else None,
+            "is_manual":    link.link_source == LinkSource.manual,
         })
 
     # Tracking numbers

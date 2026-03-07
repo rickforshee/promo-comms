@@ -23,7 +23,6 @@
             >Notes</button>
         </div>
 
-        <!-- Emails tab -->
         <div id="tab-emails" class="tab-content active">
             {% for email in emails %}
             <div class="email-card">
@@ -49,22 +48,22 @@
             {% endfor %}
         </div>
 
-        <!-- Notes tab -->
         <div id="tab-notes" class="tab-content">
             <div id="notes-panel">
-                <!-- Loaded via HTMX on first tab click -->
                 <p class="empty notes-empty">Click Notes to load.</p>
             </div>
         </div>
     </div>
 
-    <!-- Right: Assignment + Pace data + tracking -->
+    <!-- Right panel -->
     <div class="pace-panel">
 
+        <!-- Assignment -->
         <div class="panel-section">
             {% include "threads/assignment_widget.html" %}
         </div>
 
+        <!-- Tracking -->
         {% if tracking %}
         <div class="panel-section">
             <h3>Tracking Numbers</h3>
@@ -81,56 +80,10 @@
         </div>
         {% endif %}
 
-        {% if jobs %}
+        <!-- Jobs + POs with manual link management -->
         <div class="panel-section">
-            <h3>Linked Jobs</h3>
-            {% for item in jobs %}
-            <div class="pace-card">
-                <div class="pace-card-title">
-                    <a href="{{ item.pace_url }}" target="_blank" class="pace-link">
-                        Job #{{ item.job.job_number }} ↗
-                    </a>
-                </div>
-                <div class="pace-card-row"><span>Description</span><span>{{ item.job.description or "—" }}</span></div>
-                <div class="pace-card-row"><span>Status</span><span>{{ item.status_label }}</span></div>
-                <div class="pace-card-row"><span>Customer</span><span>{{ item.customer_name }}</span></div>
-                <div class="pace-card-row"><span>PO #</span><span>{{ item.job.po_num or "—" }}</span></div>
-                <div class="pace-card-row"><span>Value</span><span>{% if item.job.job_value %}${{ "%.2f"|format(item.job.job_value) }}{% else %}—{% endif %}</span></div>
-            </div>
-            {% endfor %}
+            {% include "threads/links_panel.html" %}
         </div>
-        {% endif %}
-
-        {% if pos %}
-        <div class="panel-section">
-            <h3>Linked POs</h3>
-            {% for item in pos %}
-            <div class="pace-card">
-                <div class="pace-card-title">
-                    {% if item.pace_url %}
-                    <a href="{{ item.pace_url }}" target="_blank" class="pace-link">
-                        PO #{{ item.po.po_number }} ↗
-                    </a>
-                    {% else %}
-                    PO #{{ item.po.po_number }}
-                    {% endif %}
-                </div>
-                <div class="pace-card-row"><span>Status</span><span>{{ item.status_label }}</span></div>
-                <div class="pace-card-row"><span>Vendor</span><span>{{ item.vendor_name }}</span></div>
-                <div class="pace-card-row"><span>Total</span><span>{% if item.po.order_total %}${{ "%.2f"|format(item.po.order_total) }}{% else %}—{% endif %}</span></div>
-                <div class="pace-card-row"><span>Date Entered</span><span>{{ item.po.date_entered or "—" }}</span></div>
-                <div class="pace-card-row"><span>Confirmed</span><span>{{ item.po.date_confirmed or "—" }}</span></div>
-                <div class="pace-card-row"><span>Last Receipt</span><span>{{ item.po.date_last_receipt or "—" }}</span></div>
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-
-        {% if not tracking and not jobs and not pos %}
-        <div class="panel-section">
-            <p class="empty">No Pace records or tracking linked to this thread.</p>
-        </div>
-        {% endif %}
 
     </div>
 </div>

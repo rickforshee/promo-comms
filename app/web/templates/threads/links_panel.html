@@ -1,0 +1,176 @@
+<div id="links-panel">
+
+    {% if error %}
+    <div class="alert alert-error" style="margin-bottom:12px;">{{ error }}</div>
+    {% endif %}
+
+    <!-- Jobs section -->
+    <div class="links-section">
+        <div class="links-section-header">
+            <h3>Linked Jobs</h3>
+        </div>
+
+        {% for item in jobs %}
+        <div class="pace-card">
+            <div class="pace-card-title">
+                <div class="pace-card-title-row">
+                    <a href="{{ item.pace_url }}" target="_blank" class="pace-link">
+                        Job #{{ item.job.job_number }} ↗
+                    </a>
+                    <div class="link-badges">
+                        {% if item.is_manual %}
+                        <span class="link-badge link-badge-manual">manual</span>
+                        {% else %}
+                        <span class="link-badge link-badge-auto">auto</span>
+                        {% endif %}
+                        <button
+                            class="link-remove"
+                            hx-delete="/threads/{{ thread_id }}/links/job/{{ item.job.job_number }}"
+                            hx-target="#links-panel"
+                            hx-swap="outerHTML"
+                            hx-confirm="Remove link to Job #{{ item.job.job_number }}?"
+                            title="Remove link"
+                        >×</button>
+                    </div>
+                </div>
+            </div>
+            <div class="pace-card-row"><span>Description</span><span>{{ item.job.description or "—" }}</span></div>
+            <div class="pace-card-row"><span>Status</span><span>{{ item.status_label }}</span></div>
+            <div class="pace-card-row"><span>Customer</span><span>{{ item.customer_name }}</span></div>
+            <div class="pace-card-row"><span>PO #</span><span>{{ item.job.po_num or "—" }}</span></div>
+            <div class="pace-card-row"><span>Value</span><span>{% if item.job.job_value %}${{ "%.2f"|format(item.job.job_value) }}{% else %}—{% endif %}</span></div>
+        </div>
+        {% else %}
+        <p class="empty" style="padding:8px 0;">No jobs linked.</p>
+        {% endfor %}
+
+        <!-- Add job form -->
+        <form
+            hx-post="/threads/{{ thread_id }}/links/job"
+            hx-target="#links-panel"
+            hx-swap="outerHTML"
+            class="add-link-form"
+            onsubmit="clearValidation('job')"
+        >
+            <div class="add-link-input-wrap">
+                <input
+                    type="text"
+                    name="job_number"
+                    id="job-number-input"
+                    class="add-link-input"
+                    placeholder="Job #"
+                    maxlength="6"
+                    autocomplete="off"
+                    oninput="validateLink('job', this.value)"
+                >
+                <span id="job-validation" class="validation-msg"></span>
+            </div>
+            <button type="submit" class="btn-add-link">Add</button>
+        </form>
+    </div>
+
+    <!-- POs section -->
+    <div class="links-section" style="margin-top:16px;">
+        <div class="links-section-header">
+            <h3>Linked POs</h3>
+        </div>
+
+        {% for item in pos %}
+        <div class="pace-card">
+            <div class="pace-card-title">
+                <div class="pace-card-title-row">
+                    {% if item.pace_url %}
+                    <a href="{{ item.pace_url }}" target="_blank" class="pace-link">
+                        PO #{{ item.po.po_number }} ↗
+                    </a>
+                    {% else %}
+                    <span>PO #{{ item.po.po_number }}</span>
+                    {% endif %}
+                    <div class="link-badges">
+                        {% if item.is_manual %}
+                        <span class="link-badge link-badge-manual">manual</span>
+                        {% else %}
+                        <span class="link-badge link-badge-auto">auto</span>
+                        {% endif %}
+                        <button
+                            class="link-remove"
+                            hx-delete="/threads/{{ thread_id }}/links/po/{{ item.po.po_number }}"
+                            hx-target="#links-panel"
+                            hx-swap="outerHTML"
+                            hx-confirm="Remove link to PO #{{ item.po.po_number }}?"
+                            title="Remove link"
+                        >×</button>
+                    </div>
+                </div>
+            </div>
+            <div class="pace-card-row"><span>Status</span><span>{{ item.status_label }}</span></div>
+            <div class="pace-card-row"><span>Vendor</span><span>{{ item.vendor_name }}</span></div>
+            <div class="pace-card-row"><span>Total</span><span>{% if item.po.order_total %}${{ "%.2f"|format(item.po.order_total) }}{% else %}—{% endif %}</span></div>
+            <div class="pace-card-row"><span>Date Entered</span><span>{{ item.po.date_entered or "—" }}</span></div>
+            <div class="pace-card-row"><span>Confirmed</span><span>{{ item.po.date_confirmed or "—" }}</span></div>
+            <div class="pace-card-row"><span>Last Receipt</span><span>{{ item.po.date_last_receipt or "—" }}</span></div>
+        </div>
+        {% else %}
+        <p class="empty" style="padding:8px 0;">No POs linked.</p>
+        {% endfor %}
+
+        <!-- Add PO form -->
+        <form
+            hx-post="/threads/{{ thread_id }}/links/po"
+            hx-target="#links-panel"
+            hx-swap="outerHTML"
+            class="add-link-form"
+            onsubmit="clearValidation('po')"
+        >
+            <div class="add-link-input-wrap">
+                <input
+                    type="text"
+                    name="po_number"
+                    id="po-number-input"
+                    class="add-link-input"
+                    placeholder="PO #"
+                    maxlength="5"
+                    autocomplete="off"
+                    oninput="validateLink('po', this.value)"
+                >
+                <span id="po-validation" class="validation-msg"></span>
+            </div>
+            <button type="submit" class="btn-add-link">Add</button>
+        </form>
+    </div>
+</div>
+
+<script>
+const _validateTimers = {};
+
+function validateLink(type, value) {
+    const msgEl = document.getElementById(type + '-validation');
+    clearTimeout(_validateTimers[type]);
+    if (!value || value.length < (type === 'job' ? 6 : 5)) {
+        msgEl.textContent = '';
+        msgEl.className = 'validation-msg';
+        return;
+    }
+    _validateTimers[type] = setTimeout(async () => {
+        try {
+            const res = await fetch('/validate/' + type + '/' + encodeURIComponent(value));
+            const data = await res.json();
+            if (data.valid) {
+                const label = type === 'job' ? data.description : data.vendor_name;
+                msgEl.textContent = '✓ ' + (label || 'Found');
+                msgEl.className = 'validation-msg valid';
+            } else {
+                msgEl.textContent = '✗ Not found in Pace';
+                msgEl.className = 'validation-msg invalid';
+            }
+        } catch(e) {
+            msgEl.textContent = '';
+        }
+    }, 400);
+}
+
+function clearValidation(type) {
+    const msgEl = document.getElementById(type + '-validation');
+    if (msgEl) { msgEl.textContent = ''; msgEl.className = 'validation-msg'; }
+}
+</script>

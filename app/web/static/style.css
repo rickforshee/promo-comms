@@ -488,3 +488,74 @@ a:hover { text-decoration: underline; }
 /* Override Quill toolbar border radius */
 .ql-toolbar { border-radius: 6px 6px 0 0 !important; border-color: #e5e7eb !important; }
 .ql-container { border-radius: 0 0 6px 6px !important; border-color: #e5e7eb !important; }
+
+/* ── Manual Links ───────────────────────────────────────────────────────── */
+.pace-card-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.link-badges { display: flex; align-items: center; gap: 6px; }
+
+.link-badge {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    padding: 2px 6px;
+    border-radius: 10px;
+}
+.link-badge-auto   { background: #e0f2fe; color: #0369a1; }
+.link-badge-manual { background: #fef9c3; color: #854d0e; }
+
+.link-remove {
+    background: none;
+    border: none;
+    color: #d1d5db;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 2px;
+    line-height: 1;
+}
+.link-remove:hover { color: #ef4444; }
+
+.links-section { }
+.links-section-header { margin-bottom: 6px; }
+
+.add-link-form {
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+    margin-top: 8px;
+}
+.add-link-input-wrap { flex: 1; position: relative; }
+.add-link-input {
+    width: 100%;
+    padding: 7px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    outline: none;
+}
+.add-link-input:focus { border-color: #4361ee; }
+.validation-msg {
+    display: block;
+    font-size: 11px;
+    margin-top: 3px;
+    min-height: 14px;
+}
+.validation-msg.valid   { color: #16a34a; }
+.validation-msg.invalid { color: #dc2626; }
+
+.btn-add-link {
+    background: #4361ee;
+    color: #fff;
+    border: none;
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.btn-add-link:hover { background: #3451d1; }
