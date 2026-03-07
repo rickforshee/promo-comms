@@ -57,6 +57,7 @@ class User(Base):
     active       = Column(Boolean, nullable=False, default=True)
     created_at   = Column(DateTime, server_default=func.now())
     last_login   = Column(DateTime)
+    password_hash = Column(String(255), nullable=True)
 
     assigned_threads = relationship("Thread", back_populates="assignee")
     notes            = relationship("Note", back_populates="author")

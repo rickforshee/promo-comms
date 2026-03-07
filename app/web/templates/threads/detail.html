@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}{{ thread.subject or "Thread" }} — Promo Comms{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <a href="/threads" class="back-link">← Inbox</a>
+    <h2>{{ thread.subject or "(no subject)" }}</h2>
+</div>
+
+<div class="detail-layout">
+
+    <!-- Left: Email thread -->
+    <div class="email-thread">
+        {% for email in emails %}
+        <div class="email-card">
+            <div class="email-meta">
+                <span class="email-from">{{ email.sender_name or email.sender_email or "Unknown" }}</span>
+                <span class="email-date">
+                    {% if email.received_at %}{{ email.received_at.strftime("%b %d, %Y %I:%M %p") }}{% endif %}
+                </span>
+            </div>
+            <div class="email-subject">{{ email.subject or "(no subject)" }}</div>
+            <div class="email-body">
+                {% if email.body_html %}
+                    <iframe srcdoc="{{ email.body_html | e }}" class="email-iframe" onload="this.style.height=this.contentWindow.document.body.scrollHeight+'px'"></iframe>
+                {% elif email.body_text %}
+                    <pre class="email-text">{{ email.body_text }}</pre>
+                {% else %}
+                    <em class="empty">No body content.</em>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <p class="empty">No emails in this thread.</p>
+        {% endfor %}
+    </div>
+
+    <!-- Right: Pace data -->
+    <div class="pace-panel">
+
+        {% if jobs %}
+        <div class="panel-section">
+            <h3>Linked Jobs</h3>
+            {% for job in jobs %}
+            <div class="pace-card">
+                <div class="pace-card-title">Job #{{ job.job_number }}</div>
+                <div class="pace-card-row"><span>Description</span><span>{{ job.description or "—" }}</span></div>
+                <div class="pace-card-row"><span>Status</span><span>{{ job.admin_status or "—" }}</span></div>
+                <div class="pace-card-row"><span>Customer</span><span>{{ job.customer_id or "—" }}</span></div>
+                <div class="pace-card-row"><span>PO #</span><span>{{ job.po_num or "—" }}</span></div>
+                <div class="pace-card-row"><span>Value</span><span>{% if job.job_value %}${{ "%.2f"|format(job.job_value) }}{% else %}—{% endif %}</span></div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if pos %}
+        <div class="panel-section">
+            <h3>Linked POs</h3>
+            {% for po in pos %}
+            <div class="pace-card">
+                <div class="pace-card-title">PO #{{ po.po_number }}</div>
+                <div class="pace-card-row"><span>Status</span><span>{{ po.order_status or "—" }}</span></div>
+                <div class="pace-card-row"><span>Vendor</span><span>{{ po.vendor_id or "—" }}</span></div>
+                <div class="pace-card-row"><span>Total</span><span>{% if po.order_total %}${{ "%.2f"|format(po.order_total) }}{% else %}—{% endif %}</span></div>
+                <div class="pace-card-row"><span>Date Entered</span><span>{{ po.date_entered or "—" }}</span></div>
+                <div class="pace-card-row"><span>Confirmed</span><span>{{ po.date_confirmed or "—" }}</span></div>
+                <div class="pace-card-row"><span>Last Receipt</span><span>{{ po.date_last_receipt or "—" }}</span></div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if not jobs and not pos %}
+        <div class="panel-section">
+            <p class="empty">No Pace records linked to this thread.</p>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}
