@@ -349,8 +349,25 @@ class IngestionService:
             ))
 
     def _create_po_links(self, thread: Thread, po_numbers: list[str]):
-        """PO cache not yet populated — skip auto-linking for now."""
-        pass
+        """Create ThreadPOLink records for PO numbers validated against Pace PO cache."""
+        existing = {
+            link.po_number
+            for link in self.db.query(ThreadPOLink)
+            .filter(ThreadPOLink.thread_id == thread.id)
+            .all()
+        }
+        for po_num in po_numbers:
+            if po_num in existing:
+                continue
+            if not self.db.query(PacePOCache).filter(
+                PacePOCache.po_number == po_num
+            ).first():
+                continue
+            self.db.add(ThreadPOLink(
+                thread_id   = thread.id,
+                po_number   = po_num,
+                link_source = LinkSource.auto,
+            ))
 
     # ─── Helpers ─────────────────────────────────────────────────────────────
 
