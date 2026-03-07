@@ -53,3 +53,9 @@ uvicorn==0.41.0
 vine==5.1.0
 wcwidth==0.6.0
 zeep==4.3.2
+fastapi==0.135.1
+fastapi-cli==0.0.24
+fastapi-cloud-cli==0.14.0
+itsdangerous==2.2.0
+passlib==1.7.4
+python-multipart==0.0.22

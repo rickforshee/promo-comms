@@ -236,6 +236,34 @@ class PaceCacheService:
             model       = PaceCustomerCache,
             pk_field    = "customer_id",
         )
+    
+    def refresh_vendor_names(self) -> int:
+        """
+        Backfill company_name in pace_vendor_cache via direct Pace DB query.
+        Uses apname from the vendor table, keyed on apmasterid.
+        """
+        from sqlalchemy import create_engine, text
+        from app import config
+
+        logger.info("Refreshing vendor company names from Pace DB...")
+        engine = create_engine(config.PACE_DB_URL)
+        with engine.connect() as conn:
+            rows = conn.execute(text(
+                "SELECT apmasterid, apname FROM vendor WHERE apname IS NOT NULL AND apname != ''"
+            )).fetchall()
+
+        count = 0
+        for row in rows:
+            vendor = self.db.query(PaceVendorCache).filter(
+                PaceVendorCache.vendor_id == str(row.apmasterid).strip()
+            ).first()
+            if vendor and row.apname:
+                vendor.company_name = row.apname.strip()
+                count += 1
+
+        self.db.commit()
+        logger.info(f"Vendor company names updated: {count}")
+        return count
 
     # ─── Pagination + Upsert ─────────────────────────────────────────────────
 

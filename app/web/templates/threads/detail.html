@@ -41,14 +41,22 @@
         {% if jobs %}
         <div class="panel-section">
             <h3>Linked Jobs</h3>
-            {% for job in jobs %}
+            {% for item in jobs %}
             <div class="pace-card">
-                <div class="pace-card-title">Job #{{ job.job_number }}</div>
-                <div class="pace-card-row"><span>Description</span><span>{{ job.description or "—" }}</span></div>
-                <div class="pace-card-row"><span>Status</span><span>{{ job.admin_status or "—" }}</span></div>
-                <div class="pace-card-row"><span>Customer</span><span>{{ job.customer_id or "—" }}</span></div>
-                <div class="pace-card-row"><span>PO #</span><span>{{ job.po_num or "—" }}</span></div>
-                <div class="pace-card-row"><span>Value</span><span>{% if job.job_value %}${{ "%.2f"|format(job.job_value) }}{% else %}—{% endif %}</span></div>
+                <div class="pace-card-title">
+                    {% if item.pace_url %}
+                    <a href="{{ item.pace_url }}" target="_blank" class="pace-link">
+                        Job #{{ item.job.job_number }} ↗
+                    </a>
+                    {% else %}
+                    Job #{{ item.job.job_number }}
+                    {% endif %}
+                </div>
+                <div class="pace-card-row"><span>Description</span><span>{{ item.job.description or "—" }}</span></div>
+                <div class="pace-card-row"><span>Status</span><span>{{ item.status_label }}</span></div>
+                <div class="pace-card-row"><span>Customer</span><span>{{ item.customer_name }}</span></div>
+                <div class="pace-card-row"><span>PO #</span><span>{{ item.job.po_num or "—" }}</span></div>
+                <div class="pace-card-row"><span>Value</span><span>{% if item.job.job_value %}${{ "%.2f"|format(item.job.job_value) }}{% else %}—{% endif %}</span></div>
             </div>
             {% endfor %}
         </div>
@@ -57,15 +65,23 @@
         {% if pos %}
         <div class="panel-section">
             <h3>Linked POs</h3>
-            {% for po in pos %}
+            {% for item in pos %}
             <div class="pace-card">
-                <div class="pace-card-title">PO #{{ po.po_number }}</div>
-                <div class="pace-card-row"><span>Status</span><span>{{ po.order_status or "—" }}</span></div>
-                <div class="pace-card-row"><span>Vendor</span><span>{{ po.vendor_id or "—" }}</span></div>
-                <div class="pace-card-row"><span>Total</span><span>{% if po.order_total %}${{ "%.2f"|format(po.order_total) }}{% else %}—{% endif %}</span></div>
-                <div class="pace-card-row"><span>Date Entered</span><span>{{ po.date_entered or "—" }}</span></div>
-                <div class="pace-card-row"><span>Confirmed</span><span>{{ po.date_confirmed or "—" }}</span></div>
-                <div class="pace-card-row"><span>Last Receipt</span><span>{{ po.date_last_receipt or "—" }}</span></div>
+                <div class="pace-card-title">
+                    {% if item.pace_url %}
+                    <a href="{{ item.pace_url }}" target="_blank" class="pace-link">
+                        PO #{{ item.po.po_number }} ↗
+                    </a>
+                    {% else %}
+                    PO #{{ item.po.po_number }}
+                    {% endif %}
+                </div>
+                <div class="pace-card-row"><span>Status</span><span>{{ item.status_label }}</span></div>
+                <div class="pace-card-row"><span>Vendor</span><span>{{ item.vendor_name }}</span></div>
+                <div class="pace-card-row"><span>Total</span><span>{% if item.po.order_total %}${{ "%.2f"|format(item.po.order_total) }}{% else %}—{% endif %}</span></div>
+                <div class="pace-card-row"><span>Date Entered</span><span>{{ item.po.date_entered or "—" }}</span></div>
+                <div class="pace-card-row"><span>Confirmed</span><span>{{ item.po.date_confirmed or "—" }}</span></div>
+                <div class="pace-card-row"><span>Last Receipt</span><span>{{ item.po.date_last_receipt or "—" }}</span></div>
             </div>
             {% endfor %}
         </div>

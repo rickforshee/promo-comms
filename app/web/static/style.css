@@ -242,3 +242,6 @@ a:hover { text-decoration: underline; }
 
 /* ── Misc ──────────────────────────────────────────────────────────────── */
 .empty { color: #9ca3af; font-style: italic; font-size: 13px; padding: 12px 0; }
+
+.pace-link { color: #4361ee; font-weight: 700; font-size: 14px; }
+.pace-link:hover { text-decoration: underline; }

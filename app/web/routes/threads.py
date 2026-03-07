@@ -2,17 +2,32 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 
+from app import config
 from app.models import (
     Thread, Email, ThreadJobLink, ThreadPOLink,
-    PaceJobCache, PacePOCache,
+    PaceJobCache, PacePOCache, PaceVendorCache, PaceCustomerCache,
 )
 from app.web.auth import get_current_user, get_db
 from app.models import User
 
 router = APIRouter()
 templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates")
+
+PACE_BASE = "https://vicepace.vividimpact.com/epace/company:public/object"
+
+
+def _load_status_maps() -> tuple[dict, dict]:
+    """Load job and PO status descriptions from Pace DB."""
+    engine = create_engine(config.PACE_DB_URL)
+    with engine.connect() as conn:
+        job_rows = conn.execute(text("SELECT sysstatusid, sysdescription FROM jobstatus")).fetchall()
+        po_rows  = conn.execute(text("SELECT sysstatusid, sysdescription FROM postatus")).fetchall()
+    job_map = {str(r.sysstatusid): r.sysdescription for r in job_rows}
+    po_map  = {str(r.sysstatusid): r.sysdescription for r in po_rows}
+    return job_map, po_map
 
 
 @router.get("/threads", response_class=HTMLResponse)
@@ -34,7 +49,6 @@ async def thread_list(
         .all()
     )
 
-    # Attach latest email and link counts to each thread
     thread_data = []
     for thread in threads:
         latest_email = (
@@ -82,21 +96,56 @@ async def thread_detail(
         .all()
     )
 
-    # Linked jobs
+    # Load status lookup maps from Pace DB
+    try:
+        job_status_map, po_status_map = _load_status_maps()
+    except Exception:
+        job_status_map, po_status_map = {}, {}
+
+    # Linked jobs — enrich with customer name, status label, Pace URL
     job_links = db.query(ThreadJobLink).filter(ThreadJobLink.thread_id == thread_id).all()
     jobs = []
     for link in job_links:
         job = db.query(PaceJobCache).filter(PaceJobCache.job_number == link.job_number).first()
-        if job:
-            jobs.append(job)
+        if not job:
+            continue
+        customer = db.query(PaceCustomerCache).filter(
+            PaceCustomerCache.customer_id == job.customer_id
+        ).first() if job.customer_id else None
 
-    # Linked POs
+        jobs.append({
+            "job":           job,
+            "status_label":  job_status_map.get(str(job.admin_status), job.admin_status or "—"),
+            "customer_name": customer.cust_name if customer else (job.customer_id or "—"),
+            "pace_url":      f"{PACE_BASE}/Job/detail/{job.job_number}",
+        })
+
+    # Linked POs — enrich with vendor name, status label, Pace URL
     po_links = db.query(ThreadPOLink).filter(ThreadPOLink.thread_id == thread_id).all()
     pos = []
     for link in po_links:
         po = db.query(PacePOCache).filter(PacePOCache.po_number == link.po_number).first()
-        if po:
-            pos.append(po)
+        if not po:
+            continue
+        vendor = db.query(PaceVendorCache).filter(
+            PaceVendorCache.vendor_id == po.vendor_id
+        ).first() if po.vendor_id else None
+
+        # Prefer company name from vendor cache if available
+        if vendor:
+            vendor_name = vendor.company_name or (
+                ((vendor.contact_first_name or "") + " " + (vendor.contact_last_name or "")).strip()
+            ) or po.vendor_id or "—"
+        else:
+            vendor_name = po.vendor_id or "—"
+
+        pos.append({
+            "po":           po,
+            "status_label": po_status_map.get(str(po.order_status), po.order_status or "—"),
+            "vendor_name":  vendor_name,
+            "pace_url":     f"{PACE_BASE}/PurchaseOrder/detail/{po.pace_internal_id}"
+                            if po.pace_internal_id else None,
+        })
 
     return templates.TemplateResponse("threads/detail.html", {
         "request":      request,

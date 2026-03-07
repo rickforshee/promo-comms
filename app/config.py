@@ -37,3 +37,5 @@ PACE_DB_URL = (
     f"postgresql+psycopg2://{os.getenv('PACE_DB_USER')}:{os.getenv('PACE_DB_PASSWORD')}"
     f"@{os.getenv('PACE_DB_HOST')}:{os.getenv('PACE_DB_PORT', 5432)}/{os.getenv('PACE_DB_NAME')}"
 )
+
+SECRET_KEY = os.getenv("SECRET_KEY", "04740ffdbeeae2a2dd39b48de87c29f261c72304b47f1025d5a0c408083277c1")

@@ -280,6 +280,7 @@ class PaceVendorCache(Base):
     contact_first_name = Column(String(100))
     contact_last_name  = Column(String(100))
     contact_title    = Column(String(200))
+    company_name = Column(String(60), nullable=True)
     email_address    = Column(String(255))
     fax_number       = Column(String(60))
     address1         = Column(String(100))
