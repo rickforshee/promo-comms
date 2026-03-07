@@ -155,67 +155,62 @@ class PaceCacheService:
 
     def refresh_purchase_orders(self) -> int:
         """
-        PO cache deferred — pace_job_cache.po_num is a free-text field and
-        does not reliably map to PurchaseOrder records in Pace.
-        Returns 0 without making any API calls.
+        Refresh pace_po_cache via direct Pace DB query.
+        Filters to promo era (April 2025+) and excludes cancelled POs.
         """
-        logger.info("PO cache refresh skipped — not yet implemented.")
-        return 0
+        from sqlalchemy import create_engine, text
+        from app import config
+
+        logger.info("Refreshing PO cache (via direct Pace DB)...")
+
+        engine = create_engine(config.PACE_DB_URL)
+        with engine.connect() as conn:
+            rows = conn.execute(text("""
+                SELECT
+                    pomasterid, poautoinc, apmasterid, armasterid,
+                    poorderstatus, poordertotal, podateentered,
+                    podateconfirmed, podatelastreceipt, buyer,
+                    poconfirmedby, ponotes, contactfirstname, contactlastname,
+                    lastmodified
+                FROM purchaseorder
+                WHERE podateentered >= '2025-04-01'
+                AND poorderstatus != 'X'
+                AND pomasterid IS NOT NULL
+                AND pomasterid != ''
+            """)).fetchall()
 
         count = 0
-
-        for po_num in po_numbers:
-            try:
-                results = (
-                    self.client.model('PurchaseOrder')
-                    .filter('@poNumber', po_num)
-                    .load(fields)
-                    .find()
-                    .to_list()
-                )
-                for obj in results:
-                    mapped = self._map_po(obj)
-                    if not mapped.get("po_number"):
-                        continue
-                    stmt = pg_insert(PacePOCache).values(**mapped)
-                    stmt = stmt.on_conflict_do_update(
-                        index_elements=["po_number"],
-                        set_={k: stmt.excluded[k] for k in mapped if k != "po_number"},
-                    )
-                    self.db.execute(stmt)
-                count += len(results)
-            except Exception as e:
-                logger.warning(f"Failed to fetch PO {po_num}: {e}")
+        for row in rows:
+            mapped = {
+                "po_number":          str(row.pomasterid).strip(),
+                "pace_internal_id":   row.poautoinc,
+                "vendor_id":          row.apmasterid,
+                "customer_id":        row.armasterid,
+                "order_status":       row.poorderstatus,
+                "order_total":        _safe_decimal(row.poordertotal),
+                "date_entered":       row.podateentered,
+                "date_confirmed":     row.podateconfirmed,
+                "date_last_receipt":  row.podatelastreceipt,
+                "buyer":              row.buyer,
+                "confirmed_by":       row.poconfirmedby,
+                "notes":              row.ponotes,
+                "contact_first_name": row.contactfirstname,
+                "contact_last_name":  row.contactlastname,
+                "last_modified":      row.lastmodified,
+            }
+            if not mapped["po_number"]:
+                continue
+            stmt = pg_insert(PacePOCache).values(**mapped)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["po_number"],
+                set_={k: stmt.excluded[k] for k in mapped if k != "po_number"},
+            )
+            self.db.execute(stmt)
+            count += 1
 
         self.db.commit()
         logger.info(f"PO cache refresh complete — {count} records")
         return count
-
-    def refresh_vendors(self) -> int:
-        """Refresh pace_vendor_cache. Active vendors only."""
-        logger.info("Refreshing vendor cache...")
-
-        fields = {
-            "vendorId":        "@id",
-            "firstName":       "@contactFirstName",
-            "lastName":        "@contactLastName",
-            "emailAddress":    "@emailAddress",
-            "fax":             "@faxNumber",
-            "address1":        "@address1",
-            "city":            "@city",
-            "active":          "@active",
-            "customerNumber":  "@customerNumber",
-            "defaultCurrency": "@defaultCurrency",
-        }
-
-        return self._paginate_and_upsert(
-            object_type = "Vendor",
-            fields      = fields,
-            builder_fn  = lambda model: model.filter("@active", True),
-            mapper      = self._map_vendor,
-            model       = PaceVendorCache,
-            pk_field    = "vendor_id",
-        )
 
     def refresh_customers(self) -> int:
         """Refresh pace_customer_cache. Non-inactive customers only."""

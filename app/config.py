@@ -32,3 +32,8 @@ ATTACHMENT_STORAGE_PATH = os.getenv(
     "ATTACHMENT_STORAGE_PATH",
     os.path.join(os.path.dirname(os.path.dirname(__file__)), "attachments")
 )
+
+PACE_DB_URL = (
+    f"postgresql+psycopg2://{os.getenv('PACE_DB_USER')}:{os.getenv('PACE_DB_PASSWORD')}"
+    f"@{os.getenv('PACE_DB_HOST')}:{os.getenv('PACE_DB_PORT', 5432)}/{os.getenv('PACE_DB_NAME')}"
+)
