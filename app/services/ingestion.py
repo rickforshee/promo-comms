@@ -1,7 +1,7 @@
 import base64
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 from sqlalchemy.orm import Session
@@ -49,6 +49,10 @@ class IngestionService:
         """
         Fetch and ingest all new messages from the specified folder.
 
+        For realtime runs, only fetches messages from the last 10 minutes
+        to avoid paging through the entire inbox on every scheduler tick.
+        For historical runs, fetches all messages (respecting max_pages).
+
         Args:
             folder:        Graph API folder name ('inbox', 'sentitems', etc.)
             import_source: Tag records as realtime or historical
@@ -61,11 +65,19 @@ class IngestionService:
         skip_token = None
         pages_fetched = 0
 
+        # Realtime runs only look back 10 minutes — avoids full inbox scan
+        since = None
+        if import_source == ImportSource.realtime:
+            lookback = datetime.now(timezone.utc) - timedelta(minutes=10)
+            since = lookback.strftime("%Y-%m-%dT%H:%M:%SZ")
+            logger.info(f"Realtime mode — fetching messages since {since}")
+
         while True:
             try:
                 response = self.client.list_messages(
                     folder=folder,
                     skip_token=skip_token,
+                    since=since,
                 )
             except Exception as e:
                 logger.error(f"Graph API fetch failed: {e}")
@@ -140,10 +152,11 @@ class IngestionService:
         if msg.get("hasAttachments"):
             self._process_attachments(email, message_id)
 
-        # Run pattern matching and create job/PO links
+        # Run pattern matching across subject and both body formats
         matches = extract_all(
             subject=msg.get("subject", ""),
             body=self._get_body_text(msg),
+            body_html=self._get_body_html(msg),
         )
         self._create_job_links(thread, matches["job_numbers"])
         self._create_po_links(thread, matches["po_numbers"])
@@ -252,7 +265,7 @@ class IngestionService:
         file_size    = att_meta.get("size", 0)
 
         # Fetch full attachment with content
-        full_att   = self.client.get_attachment(message_id, att_id)
+        full_att    = self.client.get_attachment(message_id, att_id)
         content_b64 = full_att.get("contentBytes")
 
         storage_path = None
@@ -284,11 +297,9 @@ class IngestionService:
         content: bytes,
     ) -> str:
         """Write attachment bytes to disk and return the relative storage path."""
-        # Store under attachments/{email_id}/{filename}
         dir_path = Path(config.ATTACHMENT_STORAGE_PATH) / str(email_id)
         dir_path.mkdir(parents=True, exist_ok=True)
 
-        # Sanitize filename
         safe_name = "".join(
             c if c.isalnum() or c in "._- " else "_" for c in filename
         ).strip()
@@ -296,7 +307,6 @@ class IngestionService:
             safe_name = "attachment"
 
         file_path = dir_path / safe_name
-        # Avoid overwriting if the same filename appears multiple times
         counter = 1
         while file_path.exists():
             stem   = Path(safe_name).stem
@@ -305,8 +315,6 @@ class IngestionService:
             counter += 1
 
         file_path.write_bytes(content)
-
-        # Return path relative to ATTACHMENT_STORAGE_PATH
         return str(file_path.relative_to(config.ATTACHMENT_STORAGE_PATH))
 
     @staticmethod
@@ -324,7 +332,8 @@ class IngestionService:
     # ─── Job / PO Link Creation ───────────────────────────────────────────────
 
     def _create_job_links(self, thread: Thread, job_numbers: list[str]):
-        """Create ThreadJobLink records for any new job numbers on this thread."""
+        """Create ThreadJobLink records for job numbers validated against Pace cache."""
+        from app.models import PaceJobCache
         existing = {
             link.job_number
             for link in self.db.query(ThreadJobLink)
@@ -332,28 +341,21 @@ class IngestionService:
             .all()
         }
         for job_num in job_numbers:
-            if job_num not in existing:
-                self.db.add(ThreadJobLink(
-                    thread_id   = thread.id,
-                    job_number  = job_num,
-                    link_source = LinkSource.auto,
-                ))
+            if job_num in existing:
+                continue
+            if not self.db.query(PaceJobCache).filter(
+                PaceJobCache.job_number == job_num
+            ).first():
+                continue
+            self.db.add(ThreadJobLink(
+                thread_id   = thread.id,
+                job_number  = job_num,
+                link_source = LinkSource.auto,
+            ))
 
     def _create_po_links(self, thread: Thread, po_numbers: list[str]):
-        """Create ThreadPOLink records for any new PO numbers on this thread."""
-        existing = {
-            link.po_number
-            for link in self.db.query(ThreadPOLink)
-            .filter(ThreadPOLink.thread_id == thread.id)
-            .all()
-        }
-        for po_num in po_numbers:
-            if po_num not in existing:
-                self.db.add(ThreadPOLink(
-                    thread_id   = thread.id,
-                    po_number   = po_num,
-                    link_source = LinkSource.auto,
-                ))
+        """PO cache not yet populated — skip auto-linking for now."""
+        pass
 
     # ─── Helpers ─────────────────────────────────────────────────────────────
 
@@ -362,7 +364,6 @@ class IngestionService:
         body = msg.get("body", {})
         if body.get("contentType") == "text":
             return body.get("content")
-        # If HTML, return None here — we store raw HTML in body_html
         return None
 
     @staticmethod

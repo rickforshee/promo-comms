@@ -14,6 +14,24 @@ _PO_PATTERN  = re.compile(r'\b(\d{5})\b')
 _JOB_EXCLUSIONS = set()
 _PO_EXCLUSIONS  = set()
 
+from html.parser import HTMLParser
+
+class _HTMLStripper(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self._parts = []
+    def handle_data(self, data):
+        self._parts.append(data)
+    def get_text(self):
+        return ' '.join(self._parts)
+
+def strip_html(html: str) -> str:
+    if not html:
+        return ''
+    s = _HTMLStripper()
+    s.feed(html)
+    return s.get_text()
+
 
 def extract_job_numbers(text: str) -> list[str]:
     """Return deduplicated list of 6-digit job numbers found in text."""
@@ -35,13 +53,9 @@ def extract_po_numbers(text: str) -> list[str]:
     ))
 
 
-def extract_all(subject: str, body: str) -> dict:
-    """
-    Run both patterns across subject and body combined.
-    Returns dict with keys 'job_numbers' and 'po_numbers'.
-    Subject is searched first so subject-line matches appear first.
-    """
-    combined = f"{subject or ''}\n{body or ''}"
+def extract_all(subject: str, body: str = None, body_html: str = None) -> dict:
+    text_body = body or strip_html(body_html)
+    combined = f"{subject or ''}\n{text_body or ''}"
     return {
         "job_numbers": extract_job_numbers(combined),
         "po_numbers":  extract_po_numbers(combined),

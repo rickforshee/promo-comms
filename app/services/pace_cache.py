@@ -163,25 +163,28 @@ class PaceCacheService:
 
         fields = {
             "poNumber":        "@poNumber",
-            "vendorId":        "vendor/@id",
-            "customerId":      "customer/@id",
+            "vendor":          "@vendor",
+            "customer":        "@customer",
             "orderStatus":     "@orderStatus",
             "orderTotal":      "@orderTotal",
             "dateEntered":     "@dateEntered",
             "dateConfirmed":   "@dateConfirmed",
             "dateLastReceipt": "@dateLastReceipt",
-            "buyer":           "buyer/@id",
+            "buyer":           "@buyer",
             "confirmedBy":     "@confirmedBy",
             "notes":           "@notes",
             "firstName":       "@contactFirstName",
             "lastName":        "@contactLastName",
-            "lastModified":    "@lastModified",
         }
 
         return self._paginate_and_upsert(
             object_type = "PurchaseOrder",
             fields      = fields,
-            builder_fn  = lambda model: model.filter("@orderStatus", "!=", "X"),
+            builder_fn = lambda model: (
+            model
+            .filter('@orderStatus', '!=', 'X')
+            .filter('@dateEntered', '>', '2025-04-01')
+             ),
             mapper      = self._map_po,
             model       = PacePOCache,
             pk_field    = "po_number",
@@ -195,12 +198,10 @@ class PaceCacheService:
             "vendorId":        "@id",
             "firstName":       "@contactFirstName",
             "lastName":        "@contactLastName",
-            "title":           "@contactTitle",
-            "email":           "@email",
+            "emailAddress":    "@emailAddress",
             "fax":             "@faxNumber",
             "address1":        "@address1",
             "city":            "@city",
-            "state":           "state/@id",
             "active":          "@active",
             "customerNumber":  "@customerNumber",
             "defaultCurrency": "@defaultCurrency",
@@ -224,9 +225,7 @@ class PaceCacheService:
             "custName":       "@custName",
             "address1":       "@address1",
             "city":           "@city",
-            "state":          "state/@id",
-            "email":          "@email",
-            "phone":          "@phoneNumber",
+            "phoneNumber":    "@phoneNumber",
             "customerStatus": "@customerStatus",
             "firstName":      "@contactFirstName",
             "lastName":       "@contactLastName",
@@ -359,8 +358,9 @@ class PaceCacheService:
     def _map_po(obj: dict[str, Any]) -> dict:
         return {
             "po_number":          obj.get("poNumber"),
-            "vendor_id":          obj.get("vendorId"),
-            "customer_id":        obj.get("customerId"),
+            "pace_internal_id":   _safe_int(obj.get("primaryKey")),
+            "vendor_id":          obj.get("vendor"),
+            "customer_id":        obj.get("customer"),
             "order_status":       obj.get("orderStatus"),
             "order_total":        _safe_decimal(obj.get("orderTotal")),
             "date_entered":       _safe_date(obj.get("dateEntered")),
@@ -371,8 +371,7 @@ class PaceCacheService:
             "notes":              obj.get("notes"),
             "contact_first_name": obj.get("firstName"),
             "contact_last_name":  obj.get("lastName"),
-            "last_modified":      _safe_date(obj.get("lastModified")),
-        }
+    }
 
     @staticmethod
     def _map_vendor(obj: dict[str, Any]) -> dict:
@@ -381,11 +380,10 @@ class PaceCacheService:
             "contact_first_name": obj.get("firstName"),
             "contact_last_name":  obj.get("lastName"),
             "contact_title":      obj.get("title"),
-            "email_address":      obj.get("email"),
+            "email_address":      obj.get("emailAddress"),
             "fax_number":         obj.get("fax"),
             "address1":           obj.get("address1"),
             "city":               obj.get("city"),
-            "state":              obj.get("state"),
             "active":             _safe_bool(obj.get("active")),
             "customer_number":    obj.get("customerNumber"),
             "default_currency":   obj.get("defaultCurrency"),
@@ -399,7 +397,6 @@ class PaceCacheService:
             "address1":           obj.get("address1"),
             "city":               obj.get("city"),
             "state":              obj.get("state"),
-            "email_address":      obj.get("email"),
             "phone_number":       obj.get("phone"),
             "customer_status":    obj.get("customerStatus"),
             "contact_first_name": obj.get("firstName"),
