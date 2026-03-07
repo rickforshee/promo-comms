@@ -22,6 +22,12 @@ templates = Jinja2Templates(directory=BASE_DIR / "templates")
 app.include_router(auth.router)
 app.include_router(threads.router)
 
+from app.web.routes.threads import load_status_maps
+
+@app.on_event("startup")
+async def startup_event():
+    load_status_maps()
+
 
 @app.get("/")
 async def root():

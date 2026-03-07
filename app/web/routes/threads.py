@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, func, text
 from sqlalchemy.orm import Session
 
 from app import config
@@ -18,17 +18,28 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates"
 
 PACE_BASE = "https://vicepace.vividimpact.com/epace/company:public/object"
 
+# ─── Status map cache (loaded once at startup) ────────────────────────────────
 
-def _load_status_maps() -> tuple[dict, dict]:
-    """Load job and PO status descriptions from Pace DB."""
-    engine = create_engine(config.PACE_DB_URL)
-    with engine.connect() as conn:
-        job_rows = conn.execute(text("SELECT sysstatusid, sysdescription FROM jobstatus")).fetchall()
-        po_rows  = conn.execute(text("SELECT sysstatusid, sysdescription FROM postatus")).fetchall()
-    job_map = {str(r.sysstatusid): r.sysdescription for r in job_rows}
-    po_map  = {str(r.sysstatusid): r.sysdescription for r in po_rows}
-    return job_map, po_map
+_job_status_map: dict[str, str] = {}
+_po_status_map:  dict[str, str] = {}
 
+
+def load_status_maps() -> None:
+    """Called once at app startup to populate status label caches."""
+    global _job_status_map, _po_status_map
+    try:
+        engine = create_engine(config.PACE_DB_URL)
+        with engine.connect() as conn:
+            job_rows = conn.execute(text("SELECT sysstatusid, sysdescription FROM jobstatus")).fetchall()
+            po_rows  = conn.execute(text("SELECT sysstatusid, sysdescription FROM postatus")).fetchall()
+        _job_status_map = {str(r.sysstatusid): r.sysdescription for r in job_rows}
+        _po_status_map  = {str(r.sysstatusid): r.sysdescription for r in po_rows}
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Could not load status maps: {e}")
+
+
+# ─── Thread list ──────────────────────────────────────────────────────────────
 
 @router.get("/threads", response_class=HTMLResponse)
 async def thread_list(
@@ -49,22 +60,56 @@ async def thread_list(
         .all()
     )
 
-    thread_data = []
-    for thread in threads:
-        latest_email = (
-            db.query(Email)
-            .filter(Email.thread_id == thread.id)
-            .order_by(Email.received_at.desc())
-            .first()
+    thread_ids = [t.id for t in threads]
+
+    # Latest email per thread — single query
+    latest_email_subq = (
+        db.query(
+            Email.thread_id,
+            func.max(Email.received_at).label("max_received_at"),
         )
-        job_count = db.query(ThreadJobLink).filter(ThreadJobLink.thread_id == thread.id).count()
-        po_count  = db.query(ThreadPOLink).filter(ThreadPOLink.thread_id == thread.id).count()
-        thread_data.append({
-            "thread":       thread,
-            "latest_email": latest_email,
-            "job_count":    job_count,
-            "po_count":     po_count,
-        })
+        .filter(Email.thread_id.in_(thread_ids))
+        .group_by(Email.thread_id)
+        .subquery()
+    )
+    latest_emails = (
+        db.query(Email)
+        .join(
+            latest_email_subq,
+            (Email.thread_id == latest_email_subq.c.thread_id) &
+            (Email.received_at == latest_email_subq.c.max_received_at),
+        )
+        .all()
+    )
+    latest_email_map = {e.thread_id: e for e in latest_emails}
+
+    # Job counts per thread — single query
+    job_counts = (
+        db.query(ThreadJobLink.thread_id, func.count().label("cnt"))
+        .filter(ThreadJobLink.thread_id.in_(thread_ids))
+        .group_by(ThreadJobLink.thread_id)
+        .all()
+    )
+    job_count_map = {row.thread_id: row.cnt for row in job_counts}
+
+    # PO counts per thread — single query
+    po_counts = (
+        db.query(ThreadPOLink.thread_id, func.count().label("cnt"))
+        .filter(ThreadPOLink.thread_id.in_(thread_ids))
+        .group_by(ThreadPOLink.thread_id)
+        .all()
+    )
+    po_count_map = {row.thread_id: row.cnt for row in po_counts}
+
+    thread_data = [
+        {
+            "thread":       t,
+            "latest_email": latest_email_map.get(t.id),
+            "job_count":    job_count_map.get(t.id, 0),
+            "po_count":     po_count_map.get(t.id, 0),
+        }
+        for t in threads
+    ]
 
     return templates.TemplateResponse("threads/list.html", {
         "request":      request,
@@ -76,6 +121,8 @@ async def thread_list(
         "total_pages":  (total + page_size - 1) // page_size,
     })
 
+
+# ─── Thread detail ────────────────────────────────────────────────────────────
 
 @router.get("/threads/{thread_id}", response_class=HTMLResponse)
 async def thread_detail(
@@ -96,12 +143,6 @@ async def thread_detail(
         .all()
     )
 
-    # Load status lookup maps from Pace DB
-    try:
-        job_status_map, po_status_map = _load_status_maps()
-    except Exception:
-        job_status_map, po_status_map = {}, {}
-
     # Linked jobs — enrich with customer name, status label, Pace URL
     job_links = db.query(ThreadJobLink).filter(ThreadJobLink.thread_id == thread_id).all()
     jobs = []
@@ -115,7 +156,7 @@ async def thread_detail(
 
         jobs.append({
             "job":           job,
-            "status_label":  job_status_map.get(str(job.admin_status), job.admin_status or "—"),
+            "status_label":  _job_status_map.get(str(job.admin_status), job.admin_status or "—"),
             "customer_name": customer.cust_name if customer else (job.customer_id or "—"),
             "pace_url":      f"{PACE_BASE}/Job/detail/{job.job_number}",
         })
@@ -131,7 +172,6 @@ async def thread_detail(
             PaceVendorCache.vendor_id == po.vendor_id
         ).first() if po.vendor_id else None
 
-        # Prefer company name from vendor cache if available
         if vendor:
             vendor_name = vendor.company_name or (
                 ((vendor.contact_first_name or "") + " " + (vendor.contact_last_name or "")).strip()
@@ -141,7 +181,7 @@ async def thread_detail(
 
         pos.append({
             "po":           po,
-            "status_label": po_status_map.get(str(po.order_status), po.order_status or "—"),
+            "status_label": _po_status_map.get(str(po.order_status), po.order_status or "—"),
             "vendor_name":  vendor_name,
             "pace_url":     f"{PACE_BASE}/PurchaseOrder/detail/{po.pace_internal_id}"
                             if po.pace_internal_id else None,
