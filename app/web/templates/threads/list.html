@@ -6,7 +6,6 @@
     <h2>Inbox</h2>
 </div>
 
-<!-- Search bar -->
 <div class="search-bar">
     <div class="search-input-wrap">
         <svg class="search-icon" viewBox="0 0 20 20" fill="currentColor">
@@ -17,7 +16,7 @@
             id="search-input"
             name="q"
             class="search-input"
-            placeholder="Search PO#, job#, subject, vendor…"
+            placeholder="Search PO#, job#, tracking#, subject, vendor…"
             value="{{ query }}"
             autocomplete="off"
             hx-get="/threads/search"
@@ -37,14 +36,14 @@
         hx-target="#thread-results"
         hx-include="#search-input"
     >
-        <option value="all"     {% if link_filter == 'all'     %}selected{% endif %}>All threads</option>
-        <option value="has_po"  {% if link_filter == 'has_po'  %}selected{% endif %}>Has PO links</option>
-        <option value="has_job" {% if link_filter == 'has_job' %}selected{% endif %}>Has job links</option>
-        <option value="unlinked"{% if link_filter == 'unlinked'%}selected{% endif %}>Unlinked only</option>
+        <option value="all"          {% if link_filter == 'all'          %}selected{% endif %}>All threads</option>
+        <option value="has_po"       {% if link_filter == 'has_po'       %}selected{% endif %}>Has PO links</option>
+        <option value="has_job"      {% if link_filter == 'has_job'      %}selected{% endif %}>Has job links</option>
+        <option value="has_tracking" {% if link_filter == 'has_tracking' %}selected{% endif %}>Has tracking</option>
+        <option value="unlinked"     {% if link_filter == 'unlinked'     %}selected{% endif %}>Unlinked only</option>
     </select>
 </div>
 
-<!-- Results table -->
 <div id="thread-results">
     {% include "threads/results_partial.html" %}
 </div>

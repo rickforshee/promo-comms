@@ -21,9 +21,7 @@
     <tbody>
         {% for item in threads %}
         <tr class="thread-row" onclick="window.location='/threads/{{ item.thread.id }}'">
-            <td class="thread-subject">
-                {{ item.thread.subject or "(no subject)" }}
-            </td>
+            <td class="thread-subject">{{ item.thread.subject or "(no subject)" }}</td>
             <td class="thread-from">
                 {% if item.latest_email %}
                     {{ item.latest_email.sender_name or item.latest_email.sender_email or "—" }}
@@ -40,6 +38,9 @@
                 {% endif %}
                 {% if item.po_count %}
                 <span class="tag tag-po">{{ item.po_count }} PO{% if item.po_count != 1 %}s{% endif %}</span>
+                {% endif %}
+                {% if item.tracking_count %}
+                <span class="tag tag-tracking">{{ item.tracking_count }} tracking</span>
                 {% endif %}
             </td>
         </tr>

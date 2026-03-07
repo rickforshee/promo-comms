@@ -8,8 +8,9 @@ from sqlalchemy.orm import Session
 
 from app import config
 from app.models import (
-    Email, Thread, Attachment, ThreadJobLink, ThreadPOLink,
-    EmailDirection, ImportSource, LinkSource, AttachmentType, PacePOCache,
+    Email, Thread, Attachment, ThreadJobLink, ThreadPOLink, ThreadTrackingLink,
+    EmailDirection, ImportSource, LinkSource, AttachmentType,
+    PaceJobCache, PacePOCache,
 )
 from app.services.graph_client import GraphClient
 from app.services.pattern_matcher import extract_all
@@ -155,6 +156,7 @@ class IngestionService:
         )
         self._create_job_links(thread, matches["job_numbers"])
         self._create_po_links(thread, matches["po_numbers"])
+        self._create_tracking_links(thread, email, matches.get('tracking_numbers', []))
 
         self.db.commit()
 
@@ -367,6 +369,25 @@ class IngestionService:
                 thread_id   = thread.id,
                 po_number   = po_num,
                 link_source = LinkSource.auto,
+            ))
+
+    def _create_tracking_links(self, thread: Thread, email: Email, tracking_numbers: list[dict]):
+        """Create ThreadTrackingLink records for tracking numbers found in an email."""
+        existing = {
+            link.tracking_number
+            for link in self.db.query(ThreadTrackingLink)
+            .filter(ThreadTrackingLink.thread_id == thread.id)
+            .all()
+        }
+        for t in tracking_numbers:
+            if t['number'] in existing:
+                continue
+            self.db.add(ThreadTrackingLink(
+                thread_id       = thread.id,
+                email_id        = email.id,
+                carrier         = t['carrier'],
+                tracking_number = t['number'],
+                link_source     = LinkSource.auto,
             ))
 
     # ─── Helpers ─────────────────────────────────────────────────────────────

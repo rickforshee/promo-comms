@@ -316,3 +316,28 @@ a:hover { text-decoration: underline; }
     min-height: 24px;
 }
 .search-term { color: #6b7280; font-size: 13px; }
+
+/* ── Tracking ───────────────────────────────────────────────────────────── */
+.tag-tracking { background: #fef3c7; color: #92400e; }
+
+.tracking-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+}
+.tracking-carrier {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .5px;
+    padding: 3px 7px;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+.tracking-carrier-ups   { background: #fef3c7; color: #92400e; }
+.tracking-carrier-fedex { background: #ede9fe; color: #5b21b6; }
+
+.tracking-number { flex: 1; font-size: 13px; font-family: monospace; }
+.tracking-link   { color: #4361ee; font-weight: 600; }
+.tracking-link:hover { text-decoration: underline; }

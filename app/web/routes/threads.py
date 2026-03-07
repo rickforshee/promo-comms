@@ -2,12 +2,12 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
-from sqlalchemy import create_engine, func, or_, text, union
+from sqlalchemy import create_engine, func, or_, text
 from sqlalchemy.orm import Session
 
 from app import config
 from app.models import (
-    Thread, Email, ThreadJobLink, ThreadPOLink,
+    Thread, Email, ThreadJobLink, ThreadPOLink, ThreadTrackingLink,
     PaceJobCache, PacePOCache, PaceVendorCache, PaceCustomerCache,
 )
 from app.web.auth import get_current_user, get_db
@@ -16,7 +16,9 @@ from app.models import User
 router = APIRouter()
 templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates")
 
-PACE_BASE = "https://vicepace.vividimpact.com/epace/company:public/object"
+PACE_BASE    = "https://vicepace.vividimpact.com/epace/company:public/object"
+UPS_URL      = "https://www.ups.com/track?tracknum={}"
+FEDEX_URL    = "https://www.fedex.com/fedextrack/?tracknumbers={}"
 
 # ─── Status map cache ─────────────────────────────────────────────────────────
 
@@ -41,7 +43,6 @@ def load_status_maps() -> None:
 # ─── Shared helpers ───────────────────────────────────────────────────────────
 
 def _enrich_threads(thread_ids: list[int], db: Session) -> list[dict]:
-    """Fetch and enrich a list of thread IDs for display."""
     if not thread_ids:
         return []
 
@@ -52,7 +53,6 @@ def _enrich_threads(thread_ids: list[int], db: Session) -> list[dict]:
         .all()
     )
 
-    # Latest email per thread
     latest_email_subq = (
         db.query(
             Email.thread_id,
@@ -73,7 +73,6 @@ def _enrich_threads(thread_ids: list[int], db: Session) -> list[dict]:
     )
     latest_email_map = {e.thread_id: e for e in latest_emails}
 
-    # Job/PO counts
     job_counts = (
         db.query(ThreadJobLink.thread_id, func.count().label("cnt"))
         .filter(ThreadJobLink.thread_id.in_(thread_ids))
@@ -90,51 +89,60 @@ def _enrich_threads(thread_ids: list[int], db: Session) -> list[dict]:
     )
     po_count_map = {r.thread_id: r.cnt for r in po_counts}
 
+    tracking_counts = (
+        db.query(ThreadTrackingLink.thread_id, func.count().label("cnt"))
+        .filter(ThreadTrackingLink.thread_id.in_(thread_ids))
+        .group_by(ThreadTrackingLink.thread_id)
+        .all()
+    )
+    tracking_count_map = {r.thread_id: r.cnt for r in tracking_counts}
+
     return [
         {
-            "thread":       t,
-            "latest_email": latest_email_map.get(t.id),
-            "job_count":    job_count_map.get(t.id, 0),
-            "po_count":     po_count_map.get(t.id, 0),
+            "thread":          t,
+            "latest_email":    latest_email_map.get(t.id),
+            "job_count":       job_count_map.get(t.id, 0),
+            "po_count":        po_count_map.get(t.id, 0),
+            "tracking_count":  tracking_count_map.get(t.id, 0),
         }
         for t in threads
     ]
 
 
+def _tracking_url(carrier: str, number: str) -> str:
+    if carrier == "UPS":
+        return UPS_URL.format(number)
+    return FEDEX_URL.format(number)
+
+
 def _search_thread_ids(q: str, link_filter: str, db: Session, limit: int = 200) -> list[int]:
-    """
-    Return thread IDs matching query string across PO#, job#, subject, vendor name.
-    link_filter: "all" | "has_po" | "has_job" | "unlinked"
-    """
     matched_ids: set[int] = set()
-    pattern = f"%{q}%" if q else "%"
+    pattern = f"%{q}%"
 
     if q:
-        # PO number match
-        po_matches = (
-            db.query(ThreadPOLink.thread_id)
-            .filter(ThreadPOLink.po_number.ilike(pattern))
+        # PO number
+        matched_ids.update(
+            r.thread_id for r in
+            db.query(ThreadPOLink.thread_id).filter(ThreadPOLink.po_number.ilike(pattern)).all()
+        )
+        # Job number
+        matched_ids.update(
+            r.thread_id for r in
+            db.query(ThreadJobLink.thread_id).filter(ThreadJobLink.job_number.ilike(pattern)).all()
+        )
+        # Subject
+        matched_ids.update(
+            r.id for r in
+            db.query(Thread.id).filter(Thread.subject.ilike(pattern)).all()
+        )
+        # Tracking number
+        matched_ids.update(
+            r.thread_id for r in
+            db.query(ThreadTrackingLink.thread_id)
+            .filter(ThreadTrackingLink.tracking_number.ilike(pattern))
             .all()
         )
-        matched_ids.update(r.thread_id for r in po_matches)
-
-        # Job number match
-        job_matches = (
-            db.query(ThreadJobLink.thread_id)
-            .filter(ThreadJobLink.job_number.ilike(pattern))
-            .all()
-        )
-        matched_ids.update(r.thread_id for r in job_matches)
-
-        # Subject match
-        subj_matches = (
-            db.query(Thread.id)
-            .filter(Thread.subject.ilike(pattern))
-            .all()
-        )
-        matched_ids.update(r.id for r in subj_matches)
-
-        # Vendor name match — find PO numbers for matching vendors, then thread IDs
+        # Vendor name
         vendor_ids = (
             db.query(PaceVendorCache.vendor_id)
             .filter(
@@ -154,38 +162,34 @@ def _search_thread_ids(q: str, link_filter: str, db: Session, limit: int = 200) 
             )
             if po_nums:
                 pn_list = [r.po_number for r in po_nums]
-                vendor_thread_matches = (
+                matched_ids.update(
+                    r.thread_id for r in
                     db.query(ThreadPOLink.thread_id)
                     .filter(ThreadPOLink.po_number.in_(pn_list))
                     .all()
                 )
-                matched_ids.update(r.thread_id for r in vendor_thread_matches)
 
     # Apply link filter
     if link_filter == "has_po":
-        po_thread_ids = {r.thread_id for r in db.query(ThreadPOLink.thread_id).distinct().all()}
-        if q:
-            matched_ids &= po_thread_ids
-        else:
-            matched_ids = po_thread_ids
+        po_ids = {r.thread_id for r in db.query(ThreadPOLink.thread_id).distinct().all()}
+        matched_ids = (matched_ids & po_ids) if q else po_ids
     elif link_filter == "has_job":
-        job_thread_ids = {r.thread_id for r in db.query(ThreadJobLink.thread_id).distinct().all()}
-        if q:
-            matched_ids &= job_thread_ids
-        else:
-            matched_ids = job_thread_ids
+        job_ids = {r.thread_id for r in db.query(ThreadJobLink.thread_id).distinct().all()}
+        matched_ids = (matched_ids & job_ids) if q else job_ids
+    elif link_filter == "has_tracking":
+        trk_ids = {r.thread_id for r in db.query(ThreadTrackingLink.thread_id).distinct().all()}
+        matched_ids = (matched_ids & trk_ids) if q else trk_ids
     elif link_filter == "unlinked":
-        po_thread_ids   = {r.thread_id for r in db.query(ThreadPOLink.thread_id).distinct().all()}
-        job_thread_ids  = {r.thread_id for r in db.query(ThreadJobLink.thread_id).distinct().all()}
-        linked_ids      = po_thread_ids | job_thread_ids
+        linked = (
+            {r.thread_id for r in db.query(ThreadPOLink.thread_id).distinct().all()} |
+            {r.thread_id for r in db.query(ThreadJobLink.thread_id).distinct().all()}
+        )
         if q:
-            matched_ids -= linked_ids
+            matched_ids -= linked
         else:
-            # All unlinked threads
-            all_thread_ids = {r.id for r in db.query(Thread.id).all()}
-            matched_ids = all_thread_ids - linked_ids
+            all_ids = {r.id for r in db.query(Thread.id).all()}
+            matched_ids = all_ids - linked
     else:
-        # "all" with no query — return empty (caller handles default inbox)
         if not q:
             return []
 
@@ -213,8 +217,7 @@ async def thread_list(
         .all()
     )
 
-    thread_ids = [t.id for t in threads]
-    thread_data = _enrich_threads(thread_ids, db)
+    thread_data = _enrich_threads([t.id for t in threads], db)
 
     return templates.TemplateResponse("threads/list.html", {
         "request":      request,
@@ -229,7 +232,7 @@ async def thread_list(
     })
 
 
-# ─── Search endpoint (HTMX partial) ──────────────────────────────────────────
+# ─── Search (HTMX partial) ────────────────────────────────────────────────────
 
 @router.get("/threads/search", response_class=HTMLResponse)
 async def thread_search(
@@ -241,16 +244,9 @@ async def thread_search(
 ):
     q = q.strip()
 
-    # No query and no filter — return default inbox (first 50, newest first)
     if not q and link_filter == "all":
-        threads = (
-            db.query(Thread)
-            .order_by(Thread.id.desc())
-            .limit(50)
-            .all()
-        )
-        thread_ids = [t.id for t in threads]
-        thread_data = _enrich_threads(thread_ids, db)
+        threads = db.query(Thread).order_by(Thread.id.desc()).limit(50).all()
+        thread_data = _enrich_threads([t.id for t in threads], db)
         total = db.query(Thread).count()
     else:
         thread_ids = _search_thread_ids(q, link_filter, db)
@@ -287,9 +283,9 @@ async def thread_detail(
         .all()
     )
 
-    job_links = db.query(ThreadJobLink).filter(ThreadJobLink.thread_id == thread_id).all()
+    # Linked jobs
     jobs = []
-    for link in job_links:
+    for link in db.query(ThreadJobLink).filter(ThreadJobLink.thread_id == thread_id).all():
         job = db.query(PaceJobCache).filter(PaceJobCache.job_number == link.job_number).first()
         if not job:
             continue
@@ -303,9 +299,9 @@ async def thread_detail(
             "pace_url":      f"{PACE_BASE}/Job/detail/{job.job_number}",
         })
 
-    po_links = db.query(ThreadPOLink).filter(ThreadPOLink.thread_id == thread_id).all()
+    # Linked POs
     pos = []
-    for link in po_links:
+    for link in db.query(ThreadPOLink).filter(ThreadPOLink.thread_id == thread_id).all():
         po = db.query(PacePOCache).filter(PacePOCache.po_number == link.po_number).first()
         if not po:
             continue
@@ -326,6 +322,15 @@ async def thread_detail(
                             if po.pace_internal_id else None,
         })
 
+    # Tracking numbers
+    tracking = []
+    for link in db.query(ThreadTrackingLink).filter(ThreadTrackingLink.thread_id == thread_id).all():
+        tracking.append({
+            "carrier":        link.carrier,
+            "number":         link.tracking_number,
+            "tracking_url":   _tracking_url(link.carrier, link.tracking_number),
+        })
+
     return templates.TemplateResponse("threads/detail.html", {
         "request":      request,
         "current_user": current_user,
@@ -333,4 +338,5 @@ async def thread_detail(
         "emails":       emails,
         "jobs":         jobs,
         "pos":          pos,
+        "tracking":     tracking,
     })

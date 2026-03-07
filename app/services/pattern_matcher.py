@@ -9,6 +9,12 @@ import re
 _JOB_PATTERN = re.compile(r'\b(\d{6})\b')
 _PO_PATTERN  = re.compile(r'\b(\d{5})\b')
 
+# UPS: 1Z + 16 alphanumeric characters
+_UPS_RE = re.compile(r'\b(1Z[A-Z0-9]{16})\b', re.IGNORECASE)
+
+# FedEx: 12, 15, 20, or 22 digit sequences
+_FEDEX_RE = re.compile(r'\b(\d{12}|\d{15}|\d{20}|\d{22})\b')
+
 # Common false-positive fragments to ignore (zip codes, etc.)
 # Extend this list as patterns emerge in real data
 _JOB_EXCLUSIONS = set()
@@ -52,11 +58,34 @@ def extract_po_numbers(text: str) -> list[str]:
         m for m in matches if m not in _PO_EXCLUSIONS
     ))
 
+def extract_tracking_numbers(text: str) -> list[dict]:
+    """
+    Extract UPS and FedEx tracking numbers from text.
+    Returns list of {"carrier": "UPS"|"FedEx", "number": str}
+    """
+    results = []
+    seen = set()
+
+    for match in _UPS_RE.finditer(text):
+        num = match.group(1).upper()
+        if num not in seen:
+            seen.add(num)
+            results.append({"carrier": "UPS", "number": num})
+
+    for match in _FEDEX_RE.finditer(text):
+        num = match.group(1)
+        if num not in seen:
+            seen.add(num)
+            results.append({"carrier": "FedEx", "number": num})
+
+    return results
+
 
 def extract_all(subject: str, body: str = None, body_html: str = None) -> dict:
     text_body = body or strip_html(body_html)
     combined = f"{subject or ''}\n{text_body or ''}"
     return {
-        "job_numbers": extract_job_numbers(combined),
-        "po_numbers":  extract_po_numbers(combined),
+        "job_numbers":      extract_job_numbers(combined),
+        "po_numbers":       extract_po_numbers(combined),
+        "tracking_numbers": extract_tracking_numbers(combined),
     }

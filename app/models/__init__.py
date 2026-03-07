@@ -1,6 +1,6 @@
 from sqlalchemy import (
     Column, Integer, String, Text, Boolean, DateTime, Date,
-    Numeric, ForeignKey, Enum, JSON, func
+    Numeric, ForeignKey, Enum, JSON, func, UniqueConstraint
 )
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -307,3 +307,14 @@ class PaceCustomerCache(Base):
     contact_last_name  = Column(String(100))
     account_balance    = Column(Numeric(12, 2))
     cached_at          = Column(DateTime, server_default=func.now())
+
+class ThreadTrackingLink(Base):
+    __tablename__ = "thread_tracking_links"
+    id              = Column(Integer, primary_key=True)
+    thread_id       = Column(Integer, ForeignKey("threads.id", ondelete="CASCADE"), nullable=False)
+    email_id        = Column(Integer, ForeignKey("emails.id", ondelete="SET NULL"), nullable=True)
+    carrier         = Column(String(10), nullable=False)
+    tracking_number = Column(String(50), nullable=False)
+    link_source     = Column(Enum(LinkSource), nullable=False)
+    created_at      = Column(DateTime, server_default=func.now())
+    __table_args__  = (UniqueConstraint("thread_id", "tracking_number", name="uq_thread_tracking"),)

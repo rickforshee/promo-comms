@@ -35,8 +35,24 @@
         {% endfor %}
     </div>
 
-    <!-- Right: Pace data -->
+    <!-- Right: Pace data + tracking -->
     <div class="pace-panel">
+
+        {% if tracking %}
+        <div class="panel-section">
+            <h3>Tracking Numbers</h3>
+            {% for item in tracking %}
+            <div class="pace-card tracking-card">
+                <div class="tracking-carrier tracking-carrier-{{ item.carrier | lower }}">{{ item.carrier }}</div>
+                <div class="tracking-number">
+                    <a href="{{ item.tracking_url }}" target="_blank" class="tracking-link">
+                        {{ item.number }} ↗
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
 
         {% if jobs %}
         <div class="panel-section">
@@ -44,13 +60,9 @@
             {% for item in jobs %}
             <div class="pace-card">
                 <div class="pace-card-title">
-                    {% if item.pace_url %}
                     <a href="{{ item.pace_url }}" target="_blank" class="pace-link">
                         Job #{{ item.job.job_number }} ↗
                     </a>
-                    {% else %}
-                    Job #{{ item.job.job_number }}
-                    {% endif %}
                 </div>
                 <div class="pace-card-row"><span>Description</span><span>{{ item.job.description or "—" }}</span></div>
                 <div class="pace-card-row"><span>Status</span><span>{{ item.status_label }}</span></div>
@@ -87,9 +99,9 @@
         </div>
         {% endif %}
 
-        {% if not jobs and not pos %}
+        {% if not tracking and not jobs and not pos %}
         <div class="panel-section">
-            <p class="empty">No Pace records linked to this thread.</p>
+            <p class="empty">No Pace records or tracking linked to this thread.</p>
         </div>
         {% endif %}
 
