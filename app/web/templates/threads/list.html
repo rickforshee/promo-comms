@@ -4,58 +4,48 @@
 {% block content %}
 <div class="page-header">
     <h2>Inbox</h2>
-    <span class="badge">{{ total }} threads</span>
 </div>
 
-<table class="thread-table">
-    <thead>
-        <tr>
-            <th>Subject</th>
-            <th>From</th>
-            <th>Latest</th>
-            <th>Links</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for item in threads %}
-        <tr class="thread-row" onclick="window.location='/threads/{{ item.thread.id }}'">
-            <td class="thread-subject">
-                {{ item.thread.subject or "(no subject)" }}
-            </td>
-            <td class="thread-from">
-                {% if item.latest_email %}
-                    {{ item.latest_email.sender_name or item.latest_email.sender_email or "—" }}
-                {% else %}—{% endif %}
-            </td>
-            <td class="thread-date">
-                {% if item.latest_email and item.latest_email.received_at %}
-                    {{ item.latest_email.received_at.strftime("%b %d, %Y") }}
-                {% else %}—{% endif %}
-            </td>
-            <td class="thread-links">
-                {% if item.job_count %}
-                <span class="tag tag-job">{{ item.job_count }} job{% if item.job_count != 1 %}s{% endif %}</span>
-                {% endif %}
-                {% if item.po_count %}
-                <span class="tag tag-po">{{ item.po_count }} PO{% if item.po_count != 1 %}s{% endif %}</span>
-                {% endif %}
-            </td>
-        </tr>
-        {% else %}
-        <tr><td colspan="4" class="empty">No threads found.</td></tr>
-        {% endfor %}
-    </tbody>
-</table>
-
-{% if total_pages > 1 %}
-<div class="pagination">
-    {% if page > 1 %}
-    <a href="/threads?page={{ page - 1 }}" class="btn-page">← Prev</a>
-    {% endif %}
-    <span>Page {{ page }} of {{ total_pages }}</span>
-    {% if page < total_pages %}
-    <a href="/threads?page={{ page + 1 }}" class="btn-page">Next →</a>
-    {% endif %}
+<!-- Search bar -->
+<div class="search-bar">
+    <div class="search-input-wrap">
+        <svg class="search-icon" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/>
+        </svg>
+        <input
+            type="text"
+            id="search-input"
+            name="q"
+            class="search-input"
+            placeholder="Search PO#, job#, subject, vendor…"
+            value="{{ query }}"
+            autocomplete="off"
+            hx-get="/threads/search"
+            hx-trigger="input changed delay:300ms, search"
+            hx-target="#thread-results"
+            hx-include="#link-filter"
+            hx-indicator="#search-spinner"
+        >
+        <span id="search-spinner" class="htmx-indicator search-spinner">⟳</span>
+    </div>
+    <select
+        id="link-filter"
+        name="link_filter"
+        class="filter-select"
+        hx-get="/threads/search"
+        hx-trigger="change"
+        hx-target="#thread-results"
+        hx-include="#search-input"
+    >
+        <option value="all"     {% if link_filter == 'all'     %}selected{% endif %}>All threads</option>
+        <option value="has_po"  {% if link_filter == 'has_po'  %}selected{% endif %}>Has PO links</option>
+        <option value="has_job" {% if link_filter == 'has_job' %}selected{% endif %}>Has job links</option>
+        <option value="unlinked"{% if link_filter == 'unlinked'%}selected{% endif %}>Unlinked only</option>
+    </select>
 </div>
-{% endif %}
+
+<!-- Results table -->
+<div id="thread-results">
+    {% include "threads/results_partial.html" %}
+</div>
 {% endblock %}

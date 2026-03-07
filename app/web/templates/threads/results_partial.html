@@ -1,0 +1,62 @@
+<div class="results-meta">
+    {% if query or link_filter != 'all' %}
+    <span class="badge">{{ total }} result{% if total != 1 %}s{% endif %}</span>
+    {% if query %}
+    <span class="search-term">for "<strong>{{ query }}</strong>"</span>
+    {% endif %}
+    {% else %}
+    <span class="badge">{{ total }} threads</span>
+    {% endif %}
+</div>
+
+<table class="thread-table">
+    <thead>
+        <tr>
+            <th>Subject</th>
+            <th>From</th>
+            <th>Latest</th>
+            <th>Links</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in threads %}
+        <tr class="thread-row" onclick="window.location='/threads/{{ item.thread.id }}'">
+            <td class="thread-subject">
+                {{ item.thread.subject or "(no subject)" }}
+            </td>
+            <td class="thread-from">
+                {% if item.latest_email %}
+                    {{ item.latest_email.sender_name or item.latest_email.sender_email or "—" }}
+                {% else %}—{% endif %}
+            </td>
+            <td class="thread-date">
+                {% if item.latest_email and item.latest_email.received_at %}
+                    {{ item.latest_email.received_at.strftime("%b %d, %Y") }}
+                {% else %}—{% endif %}
+            </td>
+            <td class="thread-links">
+                {% if item.job_count %}
+                <span class="tag tag-job">{{ item.job_count }} job{% if item.job_count != 1 %}s{% endif %}</span>
+                {% endif %}
+                {% if item.po_count %}
+                <span class="tag tag-po">{{ item.po_count }} PO{% if item.po_count != 1 %}s{% endif %}</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="empty">No threads found.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if not (query or link_filter != 'all') and total_pages is defined and total_pages > 1 %}
+<div class="pagination">
+    {% if page > 1 %}
+    <a href="/threads?page={{ page - 1 }}" class="btn-page">← Prev</a>
+    {% endif %}
+    <span>Page {{ page }} of {{ total_pages }}</span>
+    {% if page < total_pages %}
+    <a href="/threads?page={{ page + 1 }}" class="btn-page">Next →</a>
+    {% endif %}
+</div>
+{% endif %}
