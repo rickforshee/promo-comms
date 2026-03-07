@@ -49,39 +49,25 @@ class GraphClient:
 
     # ─── Mailbox Operations ───────────────────────────────────────────────────
 
-    def list_messages(
-        self,
-        folder: str = "inbox",
-        page_size: int = None,
-        skip_token: str = None,
-    ) -> dict:
-        """
-        Fetch a page of messages from the shared mailbox.
-
-        Returns the raw Graph API response containing 'value' (list of
-        message dicts) and optionally '@odata.nextLink' for pagination.
-        """
-        page_size = page_size or config.INGESTION_PAGE_SIZE
-        mailbox   = config.SHARED_MAILBOX
-
-        url = (
-            f"{config.GRAPH_BASE_URL}"
-            f"/users/{mailbox}/mailFolders/{folder}/messages"
-        )
-
+    def list_messages(self, folder="inbox", page_size=50, skip=0, since=None):
+        """List messages from a mailbox folder with optional date filter."""
+        mailbox = config.SHARED_MAILBOX
+        url = f"{config.GRAPH_BASE_URL}/users/{mailbox}/mailFolders/{folder}/messages"
         params = {
             "$top": page_size,
-            "$select": (
-                "id,conversationId,subject,from,toRecipients,ccRecipients,"
-                "receivedDateTime,body,hasAttachments,internetMessageHeaders,"
-                "isRead"
-            ),
-            "$orderby": "receivedDateTime desc",
+            "$select": "id,subject,from,toRecipients,ccRecipients,receivedDateTime,"
+                    "conversationId,hasAttachments,body,internetMessageHeaders",
         }
+        if since:
+            params["$filter"] = f"receivedDateTime ge {since}"
+            params["$orderby"] = "receivedDateTime asc"
+        else:
+            params["$orderby"] = "receivedDateTime desc"
+        if skip:
+            params["$skip"] = skip
+        return self._get(url, params=params)
 
-        if skip_token:
-            params["$skipToken"] = skip_token
-
+    # ... rest of method unchanged
         return self._get(url, params=params)
 
     def get_message(self, message_id: str) -> dict:

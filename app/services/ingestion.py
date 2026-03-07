@@ -62,7 +62,6 @@ class IngestionService:
             Summary dict with counts of ingested, skipped, and failed messages.
         """
         summary = {"ingested": 0, "skipped": 0, "failed": 0}
-        skip_token = None
         pages_fetched = 0
 
         # Realtime runs only look back 10 minutes — avoids full inbox scan
@@ -76,7 +75,6 @@ class IngestionService:
             try:
                 response = self.client.list_messages(
                     folder=folder,
-                    skip_token=skip_token,
                     since=since,
                 )
             except Exception as e:
@@ -106,9 +104,6 @@ class IngestionService:
             if max_pages and pages_fetched >= max_pages:
                 logger.info(f"Reached max_pages={max_pages}, stopping.")
                 break
-
-            # Extract skipToken from nextLink for the next request
-            skip_token = self._parse_skip_token(next_link)
 
         logger.info(
             f"Ingestion complete — "
@@ -377,13 +372,3 @@ class IngestionService:
     def _parse_headers(headers: list) -> dict:
         """Convert Graph API header list to a simple key→value dict."""
         return {h["name"]: h["value"] for h in headers if "name" in h}
-
-    @staticmethod
-    def _parse_skip_token(next_link: str) -> str | None:
-        """Extract $skipToken value from a Graph API nextLink URL."""
-        if not next_link:
-            return None
-        from urllib.parse import urlparse, parse_qs
-        qs = parse_qs(urlparse(next_link).query)
-        tokens = qs.get("$skipToken") or qs.get("%24skipToken")
-        return tokens[0] if tokens else None
