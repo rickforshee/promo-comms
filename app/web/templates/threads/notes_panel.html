@@ -1,0 +1,79 @@
+<div class="notes-panel" id="notes-panel">
+    <div class="notes-list">
+        {% for item in notes %}
+        <div class="note-card">
+            <div class="note-meta">
+                <div class="note-author-wrap">
+                    <div class="initials-badge initials-badge-sm">
+                        {{ ((item.author.display_name or item.author.email) if item.author else "?")[:2].upper() }}
+                    </div>
+                    <span class="note-author">{{ (item.author.display_name or item.author.email) if item.author else "Unknown" }}</span>
+                </div>
+                <div class="note-meta-right">
+                    <span class="note-date">{{ item.note.created_at.strftime("%b %d, %Y %I:%M %p") if item.note.created_at else "" }}</span>
+                    {% if item.author and item.author.id == current_user.id or current_user.role.value == "admin" %}
+                    <button
+                        class="note-delete"
+                        hx-delete="/threads/{{ thread_id }}/notes/{{ item.note.id }}"
+                        hx-target="#notes-panel"
+                        hx-swap="outerHTML"
+                        hx-confirm="Delete this note?"
+                        title="Delete note"
+                    >×</button>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="note-content ql-editor">{{ item.note.content | safe }}</div>
+        </div>
+        {% else %}
+        <p class="empty notes-empty">No notes yet.</p>
+        {% endfor %}
+    </div>
+
+    <!-- Quill editor -->
+    <div class="note-composer">
+        <div id="note-editor" class="note-editor-quill"></div>
+        <div class="note-composer-actions">
+            <button
+                class="btn-primary btn-sm"
+                onclick="submitNote({{ thread_id }})"
+            >Add Note</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    // Only init Quill once per panel load
+    if (window._quillInstance) {
+        window._quillInstance = null;
+    }
+    if (typeof Quill !== 'undefined') {
+        window._quillInstance = new Quill('#note-editor', {
+            theme: 'snow',
+            placeholder: 'Add a note…',
+            modules: {
+                toolbar: [
+                    ['bold', 'italic', 'underline'],
+                    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                    ['clean']
+                ]
+            }
+        });
+    }
+})();
+
+function submitNote(threadId) {
+    const quill = window._quillInstance;
+    if (!quill) return;
+    const content = quill.root.innerHTML.trim();
+    if (!content || content === '<p><br></p>') return;
+
+    htmx.ajax('POST', '/threads/' + threadId + '/notes', {
+        target: '#notes-panel',
+        swap: 'outerHTML',
+        values: { content: content }
+    });
+    quill.setContents([]);
+}
+</script>
