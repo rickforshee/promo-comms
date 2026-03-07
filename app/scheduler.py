@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_EXECUTED
 from dotenv import load_dotenv
+from app.services.pace_cache import PaceCacheService
 
 load_dotenv()
 
@@ -44,6 +45,7 @@ from app.services.ingestion import IngestionService
 REALTIME_INTERVAL_MINUTES = 5
 HISTORICAL_BATCH_PAGES    = 10   # pages per historical import run (~500 emails)
 HISTORICAL_PAGE_SIZE      = 50   # emails per page (Graph API max is 999)
+PACE_CACHE_INTERVAL_MINUTES = 30
 
 
 # ─── Job Functions ────────────────────────────────────────────────────────────
@@ -108,8 +110,26 @@ def job_historical_import():
 
 
 def job_pace_cache_refresh():
-    """Placeholder — refresh local Pace data cache. Built in Phase 1 Pace work."""
-    logger.debug("Pace cache refresh: not yet implemented, skipping.")
+    """Refresh all Pace caches: jobs, vendors, customers."""
+    logger.info("── Pace cache refresh starting ──")
+    db = SessionLocal()
+    try:
+        svc = PaceCacheService(db)
+
+        jobs = svc.refresh_jobs()
+        logger.info(f"Pace cache: jobs={jobs}")
+
+        vendors = svc.refresh_vendors()
+        logger.info(f"Pace cache: vendors={vendors}")
+
+        customers = svc.refresh_customers()
+        logger.info(f"Pace cache: customers={customers}")
+
+        logger.info(f"Pace cache refresh complete — jobs={jobs}, vendors={vendors}, customers={customers}")
+    except Exception as e:
+        logger.error(f"Pace cache refresh error: {e}", exc_info=True)
+    finally:
+        db.close()
 
 
 # ─── Scheduler Setup ──────────────────────────────────────────────────────────
@@ -132,14 +152,14 @@ def build_scheduler(run_historical: bool = True) -> BackgroundScheduler:
     # Historical import — runs every 2 minutes until backlog is exhausted
     if run_historical:
         scheduler.add_job(
-            job_historical_import,
+            job_pace_cache_refresh,
             trigger="interval",
-            minutes=2,
-            id="historical_import",
-            name="Historical email import",
+            minutes=PACE_CACHE_INTERVAL_MINUTES,
+            id="pace_cache_refresh",
+            name="Pace cache refresh",
             max_instances=1,
             coalesce=True,
-            next_run_time=datetime.now(timezone.utc),
+            # No next_run_time — first run after 30 minutes
         )
 
     # Pace cache refresh — every 30 minutes (placeholder)
