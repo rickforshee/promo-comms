@@ -1,3 +1,4 @@
+from datetime import date
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -8,7 +9,7 @@ from sqlalchemy.orm import Session
 from app import config
 from app.models import (
     Thread, Email, ThreadJobLink, ThreadPOLink, ThreadTrackingLink,
-    PaceJobCache, PacePOCache, PaceVendorCache, PaceCustomerCache,
+    PaceJobCache, PacePOCache, PaceVendorCache, PaceCustomerCache, LinkSource,
 )
 from app.web.auth import get_current_user, get_db
 from app.models import User
@@ -19,6 +20,28 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates"
 PACE_BASE    = "https://vicepace.vividimpact.com/epace/company:public/object"
 UPS_URL      = "https://www.ups.com/track?tracknum={}"
 FEDEX_URL    = "https://www.fedex.com/fedextrack/?tracknumbers={}"
+
+def _parse_date(s):
+    """Parse an ISO date string, returning None for empty/invalid input."""
+    try:
+        from datetime import date
+        return date.fromisoformat(s) if s else None
+    except (ValueError, TypeError):
+        return None
+
+
+STATUS_LABELS = {
+    "open":     "Open",
+    "pending":  "Pending",
+    "resolved": "Resolved",
+    "closed":   "Closed",
+}
+STATUS_COLORS = {
+    "open":     "status-open",
+    "pending":  "status-pending",
+    "resolved": "status-resolved",
+    "closed":   "status-closed",
+}
 
 # ─── Status map cache ─────────────────────────────────────────────────────────
 
@@ -115,6 +138,7 @@ def _enrich_threads(thread_ids: list[int], db: Session) -> list[dict]:
             "po_count":        po_count_map.get(t.id, 0),
             "tracking_count":  tracking_count_map.get(t.id, 0),
             "assigned_user":   assigned_users.get(t.assigned_to),
+            "status":          (getattr(t, "status", None).value if getattr(t, "status", None) else "open"),
         }
         for t in threads
     ]
@@ -126,7 +150,7 @@ def _tracking_url(carrier: str, number: str) -> str:
     return FEDEX_URL.format(number)
 
 
-def _search_thread_ids(q: str, link_filter: str, db: Session) -> list[int]:
+def _search_thread_ids(q: str, link_filter: str, db: Session, current_user_id: int | None = None, date_from: date | None = None, date_to: date | None = None, status_filter: str = "all") -> list[int]:
     matched_ids: set[int] = set()
     pattern = f"%{q}%"
 
@@ -151,6 +175,19 @@ def _search_thread_ids(q: str, link_filter: str, db: Session) -> list[int]:
             r.thread_id for r in
             db.query(ThreadTrackingLink.thread_id)
             .filter(ThreadTrackingLink.tracking_number.ilike(pattern))
+            .all()
+        )
+        # Sender name / email
+        matched_ids.update(
+            r.thread_id for r in
+            db.query(Email.thread_id)
+            .filter(
+                or_(
+                    Email.sender_name.ilike(pattern),
+                    Email.sender_email.ilike(pattern),
+                )
+            )
+            .distinct()
             .all()
         )
         # Vendor name
@@ -200,9 +237,41 @@ def _search_thread_ids(q: str, link_filter: str, db: Session) -> list[int]:
         else:
             all_ids = {r.id for r in db.query(Thread.id).all()}
             matched_ids = all_ids - linked
-    else:
-        if not q:
+    elif link_filter == "mine":
+        if current_user_id:
+            mine_ids = {r.id for r in db.query(Thread.id).filter(Thread.assigned_to == current_user_id).all()}
+            matched_ids = (matched_ids & mine_ids) if q else mine_ids
+        else:
             return []
+    else:
+        # link_filter == "all" — if no query, seed with all IDs so
+        # status/date filters below still have something to narrow
+        if not q:
+            matched_ids = {r.id for r in db.query(Thread.id).all()}
+
+    # Apply status filter
+    if status_filter and status_filter != "all":
+        status_ids = {r.id for r in db.query(Thread.id).filter(Thread.status == status_filter).all()}
+        matched_ids = (matched_ids & status_ids) if matched_ids else status_ids
+
+    # Apply date range filter (based on latest email date)
+    if date_from or date_to:
+        date_q = db.query(Email.thread_id, func.max(Email.received_at).label("latest")).group_by(Email.thread_id)
+        date_rows = date_q.all()
+        date_map = {r.thread_id: r.latest for r in date_rows}
+
+        filtered = set()
+        for tid, latest in date_map.items():
+            if latest is None:
+                continue
+            d = latest.date()
+            if date_from and d < date_from:
+                continue
+            if date_to and d > date_to:
+                continue
+            filtered.add(tid)
+
+        matched_ids = (matched_ids & filtered) if matched_ids else filtered
 
     return list(matched_ids)
 
@@ -250,20 +319,32 @@ async def thread_search(
     request: Request,
     q: str = "",
     link_filter: str = "all",
+    status_filter: str = "all",
+    date_from: str | None = None,
+    date_to: str | None = None,
     page: int = 1,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     q = q.strip()
     page_size = 50
+    date_from_clean = date_from.strip() if date_from else ""
+    date_to_clean = date_to.strip() if date_to else ""
+    is_default = not q and link_filter == "all" and status_filter == "all" and not date_from_clean and not date_to_clean
 
-    if not q and link_filter == "all":
+    if is_default:
         total = db.query(Thread).count()
         offset = (page - 1) * page_size
         threads = db.query(Thread).order_by(Thread.id.desc()).offset(offset).limit(page_size).all()
         thread_data = _enrich_threads([t.id for t in threads], db)
     else:
-        thread_ids = _search_thread_ids(q, link_filter, db)
+        thread_ids = _search_thread_ids(
+            q, link_filter, db,
+            current_user_id=current_user.id,
+            date_from=_parse_date(date_from),
+            date_to=_parse_date(date_to),
+            status_filter=status_filter,
+        )
         total = len(thread_ids)
         offset = (page - 1) * page_size
         thread_data = _enrich_threads(thread_ids[offset:offset + page_size], db)
@@ -271,14 +352,19 @@ async def thread_search(
     total_pages = (total + page_size - 1) // page_size
 
     return templates.TemplateResponse("threads/results_partial.html", {
-        "request":     request,
-        "threads":     thread_data,
-        "total":       total,
-        "query":       q,
-        "link_filter": link_filter,
-        "page":        page,
-        "total_pages": total_pages,
-        "page_size":   page_size,
+        "request":       request,
+        "threads":       thread_data,
+        "total":         total,
+        "query":         q,
+        "link_filter":   link_filter,
+        "status_filter": status_filter,
+        "date_from":     date_from_clean,
+        "date_to":       date_to_clean,
+        "page":          page,
+        "total_pages":   total_pages,
+        "page_size":     page_size,
+        "status_labels": STATUS_LABELS,
+        "status_colors": STATUS_COLORS,
     })
 
 
@@ -360,15 +446,17 @@ async def thread_detail(
     all_users = db.query(User).filter(User.active == True).order_by(User.display_name).all()
 
     return templates.TemplateResponse("threads/detail.html", {
-        "request":      request,
-        "current_user": current_user,
-        "thread":       thread,
-        "emails":       emails,
-        "jobs":         jobs,
-        "pos":          pos,
-        "tracking":     tracking,
+        "request":       request,
+        "current_user":  current_user,
+        "thread":        thread,
+        "emails":        emails,
+        "jobs":          jobs,
+        "pos":           pos,
+        "tracking":      tracking,
         "assigned_user": assigned_user,
-        "all_users":    all_users,
+        "all_users":     all_users,
+        "status_labels": STATUS_LABELS,
+        "status_colors": STATUS_COLORS,
     })
 # update thread_detail() to add these two lines before the TemplateResponse:
 #

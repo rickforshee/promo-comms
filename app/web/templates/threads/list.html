@@ -6,43 +6,68 @@
     <h2>Inbox</h2>
 </div>
 
+<form id="search-form" onsubmit="return false;">
 <div class="search-bar">
     <div class="search-input-wrap">
         <svg class="search-icon" viewBox="0 0 20 20" fill="currentColor">
             <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/>
         </svg>
-        <input
-            type="text"
-            id="search-input"
-            name="q"
-            class="search-input"
-            placeholder="Search PO#, job#, tracking#, subject, vendor…"
-            value="{{ query }}"
-            autocomplete="off"
-            hx-get="/threads/search"
-            hx-trigger="input changed delay:300ms, search"
-            hx-target="#thread-results"
-            hx-include="#link-filter"
-            hx-indicator="#search-spinner"
-        >
+        <input type="text" id="search-input" name="q" class="search-input"
+               placeholder="Search PO#, job#, tracking#, subject, vendor, sender…"
+               value="" autocomplete="off"
+               hx-get="/threads/search"
+               hx-trigger="input changed delay:300ms, search"
+               hx-target="#thread-results"
+               hx-include="#search-form"
+               hx-indicator="#search-spinner">
         <span id="search-spinner" class="htmx-indicator search-spinner">⟳</span>
     </div>
-    <select
-        id="link-filter"
-        name="link_filter"
-        class="filter-select"
-        hx-get="/threads/search"
-        hx-trigger="change"
-        hx-target="#thread-results"
-        hx-include="#search-input"
-    >
-        <option value="all"          {% if link_filter == 'all'          %}selected{% endif %}>All threads</option>
-        <option value="has_po"       {% if link_filter == 'has_po'       %}selected{% endif %}>Has PO links</option>
-        <option value="has_job"      {% if link_filter == 'has_job'      %}selected{% endif %}>Has job links</option>
-        <option value="has_tracking" {% if link_filter == 'has_tracking' %}selected{% endif %}>Has tracking</option>
-        <option value="unlinked"     {% if link_filter == 'unlinked'     %}selected{% endif %}>Unlinked only</option>
+
+    <select id="link-filter" name="link_filter" class="filter-select"
+            hx-get="/threads/search"
+            hx-trigger="change"
+            hx-target="#thread-results"
+            hx-include="#search-form">
+        <option value="all">All threads</option>
+        <option value="mine">Assigned to me</option>
+        <option value="has_po">Has PO links</option>
+        <option value="has_job">Has job links</option>
+        <option value="has_tracking">Has tracking</option>
+        <option value="unlinked">Unlinked only</option>
+    </select>
+
+    <select id="status-filter" name="status_filter" class="filter-select"
+            hx-get="/threads/search"
+            hx-trigger="change"
+            hx-target="#thread-results"
+            hx-include="#search-form">
+        <option value="all">Any status</option>
+        <option value="open">Open</option>
+        <option value="pending">Pending</option>
+        <option value="resolved">Resolved</option>
+        <option value="closed">Closed</option>
     </select>
 </div>
+
+<div class="date-filter-bar">
+    <label class="date-filter-label">From</label>
+    <input type="date" name="date_from" class="date-input"
+           hx-get="/threads/search"
+           hx-trigger="change"
+           hx-target="#thread-results"
+           hx-include="#search-form">
+    <label class="date-filter-label">To</label>
+    <input type="date" name="date_to" class="date-input"
+           hx-get="/threads/search"
+           hx-trigger="change"
+           hx-target="#thread-results"
+           hx-include="#search-form">
+    <button type="button" class="btn-clear-dates" onclick="
+        this.closest('form').querySelectorAll('input[type=date]').forEach(i => i.value = '');
+        htmx.trigger('#search-input', 'search');
+    ">Clear dates</button>
+</div>
+</form>
 
 <div id="thread-results">
     {% include "threads/results_partial.html" %}

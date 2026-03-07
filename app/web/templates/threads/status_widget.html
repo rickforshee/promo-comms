@@ -1,0 +1,16 @@
+<div class="status-widget" id="status-widget">
+    <div class="status-widget-label">Status</div>
+    <div class="status-pill-row">
+        {% for val, label in status_labels.items() %}
+        {% set current = thread.status.value if thread.status is not string else thread.status %}
+        <button
+            class="status-pill {% if current == val %}active {{ status_colors[val] }}{% endif %}"
+            hx-post="/threads/{{ thread.id }}/status"
+            hx-vals='{"status": "{{ val }}"}'
+            hx-target="#status-widget"
+            hx-swap="outerHTML">
+            {{ label }}
+        </button>
+        {% endfor %}
+    </div>
+</div>

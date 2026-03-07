@@ -625,3 +625,55 @@ a:hover { text-decoration: underline; }
     padding: 4px 10px; border: 1px solid #c7d2fe; border-radius: 5px; white-space: nowrap;
 }
 .btn-edit:hover { background: #eef2ff; text-decoration: none; }
+
+/* ── Thread Status ─────────────────────────────────────────────────────────── */
+.thread-status-badge {
+    display: inline-block; font-size: 11px; font-weight: 600;
+    padding: 2px 8px; border-radius: 10px; white-space: nowrap;
+}
+.status-open     { background: #dbeafe; color: #1d4ed8; }
+.status-pending  { background: #fef3c7; color: #92400e; }
+.status-resolved { background: #d1fae5; color: #065f46; }
+.status-closed   { background: #f3f4f6; color: #6b7280; }
+
+/* ── Status widget (detail panel) ─────────────────────────────────────────── */
+.status-widget {
+    background: #fff; border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    padding: 12px; margin-bottom: 12px;
+}
+.status-widget-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .5px; color: #6b7280; margin-bottom: 8px;
+}
+.status-pill-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.status-pill {
+    flex: 1; min-width: 60px;
+    padding: 6px 8px; border-radius: 6px; border: 1px solid #e5e7eb;
+    background: #f9fafb; color: #6b7280;
+    font-size: 12px; font-weight: 500; cursor: pointer; text-align: center;
+    transition: all .15s;
+}
+.status-pill:hover { border-color: #9ca3af; color: #374151; background: #f3f4f6; }
+.status-pill.active.status-open     { background: #dbeafe; color: #1d4ed8; border-color: #93c5fd; }
+.status-pill.active.status-pending  { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+.status-pill.active.status-resolved { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+.status-pill.active.status-closed   { background: #f3f4f6; color: #374151; border-color: #d1d5db; }
+
+/* ── Date filter bar ───────────────────────────────────────────────────────── */
+.date-filter-bar {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 16px; flex-wrap: wrap;
+}
+.date-filter-label { font-size: 12px; font-weight: 600; color: #6b7280; }
+.date-input {
+    padding: 7px 10px; border: 1px solid #e5e7eb; border-radius: 6px;
+    font-size: 13px; background: #fff; color: #374151; outline: none;
+    cursor: pointer;
+}
+.date-input:focus { border-color: #4361ee; }
+.btn-clear-dates {
+    background: none; border: 1px solid #e5e7eb; border-radius: 6px;
+    padding: 6px 12px; font-size: 12px; color: #6b7280; cursor: pointer;
+}
+.btn-clear-dates:hover { background: #f3f4f6; color: #374151; }

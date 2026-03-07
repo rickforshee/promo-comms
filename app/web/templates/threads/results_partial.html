@@ -1,5 +1,5 @@
 <div class="results-meta">
-    {% if query or link_filter != 'all' %}
+    {% if query or link_filter != 'all' or status_filter != 'all' or date_from or date_to %}
     <span class="badge">{{ total }} result{% if total != 1 %}s{% endif %}</span>
     {% if query %}
     <span class="search-term">for "<strong>{{ query }}</strong>"</span>
@@ -15,6 +15,7 @@
             <th>Subject</th>
             <th>From</th>
             <th>Latest</th>
+            <th>Status</th>
             <th>Assigned</th>
             <th>Links</th>
         </tr>
@@ -34,6 +35,12 @@
                 {% if item.latest_email and item.latest_email.received_at %}
                     {{ item.latest_email.received_at.strftime("%b %d, %Y") }}
                 {% else %}—{% endif %}
+            </td>
+            <td>
+                {% set s = item.status or 'open' %}
+                <span class="thread-status-badge {{ status_colors[s] if status_colors is defined and s in status_colors else 'status-open' }}">
+                    {{ status_labels[s] if status_labels is defined and s in status_labels else s.title() }}
+                </span>
             </td>
             <td class="thread-assigned">
                 {% if item.assigned_user %}
@@ -57,16 +64,17 @@
             </td>
         </tr>
         {% else %}
-        <tr><td colspan="5" class="empty">No threads found.</td></tr>
+        <tr><td colspan="6" class="empty">No threads found.</td></tr>
         {% endfor %}
     </tbody>
 </table>
 
 {% if total_pages is defined and total_pages > 1 %}
+{% set pager_base = "/threads/search?q=" + (query | urlencode) + "&link_filter=" + link_filter + "&status_filter=" + (status_filter or 'all') + "&date_from=" + (date_from or '') + "&date_to=" + (date_to or '') %}
 <div class="pagination">
     {% if page > 1 %}
     <a class="btn-page"
-       hx-get="/threads/search?q={{ query | urlencode }}&link_filter={{ link_filter }}&page={{ page - 1 }}"
+       hx-get="{{ pager_base }}&page={{ page - 1 }}"
        hx-target="#thread-results"
        hx-swap="innerHTML"
        href="#">← Prev</a>
@@ -74,7 +82,7 @@
     <span>Page {{ page }} of {{ total_pages }}</span>
     {% if page < total_pages %}
     <a class="btn-page"
-       hx-get="/threads/search?q={{ query | urlencode }}&link_filter={{ link_filter }}&page={{ page + 1 }}"
+       hx-get="{{ pager_base }}&page={{ page + 1 }}"
        hx-target="#thread-results"
        hx-swap="innerHTML"
        href="#">Next →</a>
