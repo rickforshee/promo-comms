@@ -1,0 +1,38 @@
+<div class="po-lines" id="po-lines-{{ po_number }}">
+    {% if lines %}
+        {% for line in lines %}
+        <div class="po-line-card">
+            <div class="po-line-card-desc">{{ line.description }}</div>
+            {% if line.vendor_part %}
+            <div class="po-line-card-part">Part #: {{ line.vendor_part }}</div>
+            {% endif %}
+            <div class="po-line-card-meta">
+                <span>
+                    Ordered:
+                    <strong>{{ "%.0f"|format(line.qty_ordered) if line.qty_ordered is not none else "—" }}</strong>
+                </span>
+                <span>
+                    Received:
+                    <strong>{{ "%.0f"|format(line.qty_received) if line.qty_received is not none else "—" }}</strong>
+                </span>
+                <span>
+                    Unit:
+                    <strong>{{ "$%.2f"|format(line.unit_price) if line.unit_price is not none else "—" }}</strong>
+                </span>
+                <span>
+                    Ext:
+                    <strong>{{ "$%.2f"|format(line.ext_price) if line.ext_price is not none else "—" }}</strong>
+                </span>
+            </div>
+            <div class="po-line-card-footer">
+                <span class="po-line-status">{{ line.status }}</span>
+                {% if line.date_required %}
+                <span class="po-line-date">Req: {{ line.date_required }}</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+    <p class="empty" style="padding: 6px 0 2px;">No line items found.</p>
+    {% endif %}
+</div>

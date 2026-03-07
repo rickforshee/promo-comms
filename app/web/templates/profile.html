@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}My Profile — Promo Comms{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>My Profile</h2>
+</div>
+
+<div class="form-page-layout">
+    <div class="form-card">
+
+        {% if success %}
+        <div class="alert alert-success">Profile updated successfully.</div>
+        {% endif %}
+        {% if error %}
+        <div class="alert alert-error">{{ error }}</div>
+        {% endif %}
+
+        <form method="post" action="/profile">
+
+            <div class="form-section">
+                <h3>Account Info</h3>
+                <div class="form-field">
+                    <label>Email</label>
+                    <input type="text" value="{{ current_user.email }}" disabled class="form-input form-input-disabled">
+                </div>
+                <div class="form-field">
+                    <label for="display_name">Display Name</label>
+                    <input type="text" id="display_name" name="display_name"
+                           value="{{ current_user.display_name or '' }}"
+                           class="form-input" placeholder="Your name">
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>Change Password</h3>
+                <p class="form-hint">Leave blank to keep your current password.</p>
+                <div class="form-field">
+                    <label for="current_password">Current Password</label>
+                    <input type="password" id="current_password" name="current_password"
+                           class="form-input" autocomplete="current-password">
+                </div>
+                <div class="form-field">
+                    <label for="new_password">New Password</label>
+                    <input type="password" id="new_password" name="new_password"
+                           class="form-input" autocomplete="new-password">
+                </div>
+                <div class="form-field">
+                    <label for="confirm_password">Confirm New Password</label>
+                    <input type="password" id="confirm_password" name="confirm_password"
+                           class="form-input" autocomplete="new-password">
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn-primary btn-form">Save Changes</button>
+                <a href="/threads" class="btn-cancel">Cancel</a>
+            </div>
+
+        </form>
+    </div>
+</div>
+{% endblock %}

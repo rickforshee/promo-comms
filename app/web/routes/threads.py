@@ -9,7 +9,6 @@ from app import config
 from app.models import (
     Thread, Email, ThreadJobLink, ThreadPOLink, ThreadTrackingLink,
     PaceJobCache, PacePOCache, PaceVendorCache, PaceCustomerCache,
-    LinkSource, User,
 )
 from app.web.auth import get_current_user, get_db
 from app.models import User
@@ -127,7 +126,7 @@ def _tracking_url(carrier: str, number: str) -> str:
     return FEDEX_URL.format(number)
 
 
-def _search_thread_ids(q: str, link_filter: str, db: Session, limit: int = 200) -> list[int]:
+def _search_thread_ids(q: str, link_filter: str, db: Session) -> list[int]:
     matched_ids: set[int] = set()
     pattern = f"%{q}%"
 
@@ -205,7 +204,7 @@ def _search_thread_ids(q: str, link_filter: str, db: Session, limit: int = 200) 
         if not q:
             return []
 
-    return list(matched_ids)[:limit]
+    return list(matched_ids)
 
 
 # ─── Thread list ──────────────────────────────────────────────────────────────
@@ -251,19 +250,25 @@ async def thread_search(
     request: Request,
     q: str = "",
     link_filter: str = "all",
+    page: int = 1,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     q = q.strip()
+    page_size = 50
 
     if not q and link_filter == "all":
-        threads = db.query(Thread).order_by(Thread.id.desc()).limit(50).all()
-        thread_data = _enrich_threads([t.id for t in threads], db)
         total = db.query(Thread).count()
+        offset = (page - 1) * page_size
+        threads = db.query(Thread).order_by(Thread.id.desc()).offset(offset).limit(page_size).all()
+        thread_data = _enrich_threads([t.id for t in threads], db)
     else:
         thread_ids = _search_thread_ids(q, link_filter, db)
-        thread_data = _enrich_threads(thread_ids, db)
-        total = len(thread_data)
+        total = len(thread_ids)
+        offset = (page - 1) * page_size
+        thread_data = _enrich_threads(thread_ids[offset:offset + page_size], db)
+
+    total_pages = (total + page_size - 1) // page_size
 
     return templates.TemplateResponse("threads/results_partial.html", {
         "request":     request,
@@ -271,6 +276,9 @@ async def thread_search(
         "total":       total,
         "query":       q,
         "link_filter": link_filter,
+        "page":        page,
+        "total_pages": total_pages,
+        "page_size":   page_size,
     })
 
 

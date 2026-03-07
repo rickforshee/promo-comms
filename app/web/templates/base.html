@@ -15,10 +15,37 @@
         <div class="navbar-brand">Promo Comms</div>
         <div class="navbar-links">
             <a href="/threads">Inbox</a>
-            <span class="navbar-user">{{ current_user.display_name or current_user.email }}</span>
-            <a href="/logout" class="btn-logout">Logout</a>
+
+            <div class="nav-user-menu">
+                <button class="nav-user-btn" onclick="toggleUserMenu(event)">
+                    <div class="initials-badge initials-badge-sm">
+                        {{ ((current_user.display_name or current_user.email) or "?")[:2].upper() }}
+                    </div>
+                    <span class="nav-user-name">{{ current_user.display_name or current_user.email }}</span>
+                    <span class="nav-caret">▾</span>
+                </button>
+                <div class="nav-dropdown" id="nav-dropdown">
+                    <a href="/profile" class="nav-dropdown-item">My Profile</a>
+                    {% if current_user.role.value == "admin" %}
+                    <div class="nav-dropdown-divider"></div>
+                    <a href="/admin/users" class="nav-dropdown-item">Manage Users</a>
+                    {% endif %}
+                    <div class="nav-dropdown-divider"></div>
+                    <a href="/logout" class="nav-dropdown-item nav-dropdown-item-danger">Logout</a>
+                </div>
+            </div>
         </div>
     </nav>
+
+    <script>
+    function toggleUserMenu(e) {
+        e.stopPropagation();
+        document.getElementById('nav-dropdown').classList.toggle('open');
+    }
+    document.addEventListener('click', function() {
+        document.getElementById('nav-dropdown')?.classList.remove('open');
+    });
+    </script>
     {% endif %}
 
     <main class="container">

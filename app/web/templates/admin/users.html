@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Users — Admin — Promo Comms{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+    <h2>Users</h2>
+    <a href="/admin/users/new" class="btn-primary btn-form" style="width:auto;">+ Add User</a>
+</div>
+
+{% if success %}
+<div class="alert alert-success" style="margin-bottom:16px;">{{ success }}</div>
+{% endif %}
+{% if error %}
+<div class="alert alert-error" style="margin-bottom:16px;">{{ error }}</div>
+{% endif %}
+
+<div class="admin-table-wrap">
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>Email</th>
+                <th>Display Name</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Last Login</th>
+                <th>Created</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr class="{% if not user.active %}user-inactive{% endif %}">
+                <td class="user-email">{{ user.email }}</td>
+                <td>{{ user.display_name or "—" }}</td>
+                <td><span class="role-badge role-{{ user.role.value }}">{{ user.role.value }}</span></td>
+                <td>
+                    {% if user.active %}
+                    <span class="status-badge status-active">Active</span>
+                    {% else %}
+                    <span class="status-badge status-inactive">Inactive</span>
+                    {% endif %}
+                </td>
+                <td class="user-date">
+                    {{ user.last_login.strftime("%b %d, %Y") if user.last_login else "Never" }}
+                </td>
+                <td class="user-date">
+                    {{ user.created_at.strftime("%b %d, %Y") if user.created_at else "—" }}
+                </td>
+                <td>
+                    <a href="/admin/users/{{ user.id }}/edit" class="btn-edit">Edit</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

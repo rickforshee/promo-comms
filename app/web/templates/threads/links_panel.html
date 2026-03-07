@@ -44,7 +44,6 @@
         <p class="empty" style="padding:8px 0;">No jobs linked.</p>
         {% endfor %}
 
-        <!-- Add job form -->
         <form
             hx-post="/threads/{{ thread_id }}/links/job"
             hx-target="#links-panel"
@@ -54,14 +53,9 @@
         >
             <div class="add-link-input-wrap">
                 <input
-                    type="text"
-                    name="job_number"
-                    id="job-number-input"
-                    class="add-link-input"
-                    placeholder="Job #"
-                    maxlength="6"
-                    autocomplete="off"
-                    oninput="validateLink('job', this.value)"
+                    type="text" name="job_number" id="job-number-input"
+                    class="add-link-input" placeholder="Job #" maxlength="6"
+                    autocomplete="off" oninput="validateLink('job', this.value)"
                 >
                 <span id="job-validation" class="validation-msg"></span>
             </div>
@@ -109,12 +103,26 @@
             <div class="pace-card-row"><span>Date Entered</span><span>{{ item.po.date_entered or "—" }}</span></div>
             <div class="pace-card-row"><span>Confirmed</span><span>{{ item.po.date_confirmed or "—" }}</span></div>
             <div class="pace-card-row"><span>Last Receipt</span><span>{{ item.po.date_last_receipt or "—" }}</span></div>
+
+            <!-- Line items toggle -->
+            <div class="po-lines-toggle">
+                <button
+                    class="btn-lines-toggle"
+                    hx-get="/po/{{ item.po.po_number }}/lines"
+                    hx-target="#po-lines-{{ item.po.po_number }}"
+                    hx-swap="outerHTML"
+                    hx-trigger="click once"
+                    onclick="toggleLines(this)"
+                >
+                    ▶ Show line items
+                </button>
+                <div id="po-lines-{{ item.po.po_number }}" class="po-lines-container"></div>
+            </div>
         </div>
         {% else %}
         <p class="empty" style="padding:8px 0;">No POs linked.</p>
         {% endfor %}
 
-        <!-- Add PO form -->
         <form
             hx-post="/threads/{{ thread_id }}/links/po"
             hx-target="#links-panel"
@@ -124,14 +132,9 @@
         >
             <div class="add-link-input-wrap">
                 <input
-                    type="text"
-                    name="po_number"
-                    id="po-number-input"
-                    class="add-link-input"
-                    placeholder="PO #"
-                    maxlength="5"
-                    autocomplete="off"
-                    oninput="validateLink('po', this.value)"
+                    type="text" name="po_number" id="po-number-input"
+                    class="add-link-input" placeholder="PO #" maxlength="5"
+                    autocomplete="off" oninput="validateLink('po', this.value)"
                 >
                 <span id="po-validation" class="validation-msg"></span>
             </div>
@@ -163,9 +166,7 @@ function validateLink(type, value) {
                 msgEl.textContent = '✗ Not found in Pace';
                 msgEl.className = 'validation-msg invalid';
             }
-        } catch(e) {
-            msgEl.textContent = '';
-        }
+        } catch(e) { msgEl.textContent = ''; }
     }, 400);
 }
 
@@ -173,4 +174,24 @@ function clearValidation(type) {
     const msgEl = document.getElementById(type + '-validation');
     if (msgEl) { msgEl.textContent = ''; msgEl.className = 'validation-msg'; }
 }
+
+function toggleLines(btn) {
+    const container = btn.nextElementSibling;
+    const isLoaded = container.classList.contains('po-lines') || container.querySelector('.po-line-card');
+    if (isLoaded) {
+        const visible = container.style.display !== 'none';
+        container.style.display = visible ? 'none' : '';
+        btn.textContent = visible ? '▶ Show line items' : '▼ Hide line items';
+    } else {
+        btn.textContent = '▼ Hide line items';
+    }
+}
+
+// After HTMX loads line items, update button text
+document.addEventListener('htmx:afterSwap', function(e) {
+    if (e.target && e.target.id && e.target.id.startsWith('po-lines-')) {
+        const btn = e.target.previousElementSibling;
+        if (btn) btn.textContent = '▼ Hide line items';
+    }
+});
 </script>

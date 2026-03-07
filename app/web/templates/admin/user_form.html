@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit User" if edit_user else "Add User" }} — Admin — Promo Comms{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <a href="/admin/users" class="back-link">← Users</a>
+    <h2>{{ "Edit User" if edit_user else "Add User" }}</h2>
+</div>
+
+<div class="form-page-layout">
+    <div class="form-card">
+
+        {% if error %}
+        <div class="alert alert-error">{{ error }}</div>
+        {% endif %}
+
+        <form method="post">
+            <div class="form-section">
+                <h3>Account Details</h3>
+
+                <div class="form-field">
+                    <label for="email">Email *</label>
+                    <input type="email" id="email" name="email"
+                           value="{{ edit_user.email if edit_user else '' }}"
+                           class="form-input" required autocomplete="off">
+                </div>
+
+                <div class="form-field">
+                    <label for="display_name">Display Name</label>
+                    <input type="text" id="display_name" name="display_name"
+                           value="{{ edit_user.display_name if edit_user else '' }}"
+                           class="form-input" placeholder="Full name">
+                </div>
+
+                <div class="form-field">
+                    <label for="role">Role *</label>
+                    <select id="role" name="role" class="form-input form-select">
+                        {% for r in roles %}
+                        <option value="{{ r }}"
+                            {% if edit_user and edit_user.role.value == r %}selected{% endif %}
+                            {% if not edit_user and r == 'user' %}selected{% endif %}
+                        >{{ r | capitalize }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                {% if edit_user %}
+                <div class="form-field form-field-check">
+                    <label class="check-label">
+                        <input type="checkbox" name="active" value="on"
+                               {% if edit_user.active %}checked{% endif %}>
+                        <span>Account active</span>
+                    </label>
+                    <p class="form-hint">Inactive users cannot log in.</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="form-section">
+                {% if edit_user %}
+                <h3>Reset Password</h3>
+                <p class="form-hint">Leave blank to keep the current password.</p>
+                {% else %}
+                <h3>Set Password</h3>
+                {% endif %}
+
+                <div class="form-field">
+                    <label for="password">{{ "New Password" if edit_user else "Password *" }}</label>
+                    <input type="password"
+                           id="password"
+                           name="{{ 'new_password' if edit_user else 'password' }}"
+                           class="form-input"
+                           autocomplete="new-password"
+                           {% if not edit_user %}required{% endif %}>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn-primary btn-form">
+                    {{ "Save Changes" if edit_user else "Create User" }}
+                </button>
+                <a href="/admin/users" class="btn-cancel">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

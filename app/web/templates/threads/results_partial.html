@@ -22,7 +22,9 @@
     <tbody>
         {% for item in threads %}
         <tr class="thread-row" onclick="window.location='/threads/{{ item.thread.id }}'">
-            <td class="thread-subject">{{ item.thread.subject or "(no subject)" }}</td>
+            <td class="thread-subject">
+                {{ item.thread.subject or "(no subject)" }}
+            </td>
             <td class="thread-from">
                 {% if item.latest_email %}
                     {{ item.latest_email.sender_name or item.latest_email.sender_email or "—" }}
@@ -35,8 +37,8 @@
             </td>
             <td class="thread-assigned">
                 {% if item.assigned_user %}
-                <div class="initials-badge" title="{{ item.assigned_user.display_name or item.assigned_user.email }}">
-                    {{ (item.assigned_user.display_name or item.assigned_user.email)[:2].upper() }}
+                <div class="initials-badge initials-badge-sm" title="{{ item.assigned_user.display_name or item.assigned_user.email }}">
+                    {{ ((item.assigned_user.display_name or item.assigned_user.email) or "?")[:2].upper() }}
                 </div>
                 {% else %}
                 <span class="unassigned-dash">—</span>
@@ -60,14 +62,22 @@
     </tbody>
 </table>
 
-{% if not (query or link_filter != 'all') and total_pages is defined and total_pages > 1 %}
+{% if total_pages is defined and total_pages > 1 %}
 <div class="pagination">
     {% if page > 1 %}
-    <a href="/threads?page={{ page - 1 }}" class="btn-page">← Prev</a>
+    <a class="btn-page"
+       hx-get="/threads/search?q={{ query | urlencode }}&link_filter={{ link_filter }}&page={{ page - 1 }}"
+       hx-target="#thread-results"
+       hx-swap="innerHTML"
+       href="#">← Prev</a>
     {% endif %}
     <span>Page {{ page }} of {{ total_pages }}</span>
     {% if page < total_pages %}
-    <a href="/threads?page={{ page + 1 }}" class="btn-page">Next →</a>
+    <a class="btn-page"
+       hx-get="/threads/search?q={{ query | urlencode }}&link_filter={{ link_filter }}&page={{ page + 1 }}"
+       hx-target="#thread-results"
+       hx-swap="innerHTML"
+       href="#">Next →</a>
     {% endif %}
 </div>
 {% endif %}
