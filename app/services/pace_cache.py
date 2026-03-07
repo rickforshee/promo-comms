@@ -99,7 +99,6 @@ class PaceCacheService:
 
         summary = {}
         summary["jobs"]      = self.refresh_jobs()
-        summary["pos"]       = self.refresh_purchase_orders()
         summary["vendors"]   = self.refresh_vendors()
         summary["customers"] = self.refresh_customers()
 
@@ -156,39 +155,41 @@ class PaceCacheService:
 
     def refresh_purchase_orders(self) -> int:
         """
-        Refresh pace_po_cache.
-        Excludes cancelled/deleted POs (orderStatus != 'X').
+        PO cache deferred — pace_job_cache.po_num is a free-text field and
+        does not reliably map to PurchaseOrder records in Pace.
+        Returns 0 without making any API calls.
         """
-        logger.info("Refreshing PO cache...")
+        logger.info("PO cache refresh skipped — not yet implemented.")
+        return 0
 
-        fields = {
-            "poNumber":        "@poNumber",
-            "vendor":          "@vendor",
-            "customer":        "@customer",
-            "orderStatus":     "@orderStatus",
-            "orderTotal":      "@orderTotal",
-            "dateEntered":     "@dateEntered",
-            "dateConfirmed":   "@dateConfirmed",
-            "dateLastReceipt": "@dateLastReceipt",
-            "buyer":           "@buyer",
-            "confirmedBy":     "@confirmedBy",
-            "notes":           "@notes",
-            "firstName":       "@contactFirstName",
-            "lastName":        "@contactLastName",
-        }
+        count = 0
 
-        return self._paginate_and_upsert(
-            object_type = "PurchaseOrder",
-            fields      = fields,
-            builder_fn = lambda model: (
-            model
-            .filter('@orderStatus', '!=', 'X')
-            .filter('@dateEntered', '>', '2025-04-01')
-             ),
-            mapper      = self._map_po,
-            model       = PacePOCache,
-            pk_field    = "po_number",
-        )
+        for po_num in po_numbers:
+            try:
+                results = (
+                    self.client.model('PurchaseOrder')
+                    .filter('@poNumber', po_num)
+                    .load(fields)
+                    .find()
+                    .to_list()
+                )
+                for obj in results:
+                    mapped = self._map_po(obj)
+                    if not mapped.get("po_number"):
+                        continue
+                    stmt = pg_insert(PacePOCache).values(**mapped)
+                    stmt = stmt.on_conflict_do_update(
+                        index_elements=["po_number"],
+                        set_={k: stmt.excluded[k] for k in mapped if k != "po_number"},
+                    )
+                    self.db.execute(stmt)
+                count += len(results)
+            except Exception as e:
+                logger.warning(f"Failed to fetch PO {po_num}: {e}")
+
+        self.db.commit()
+        logger.info(f"PO cache refresh complete — {count} records")
+        return count
 
     def refresh_vendors(self) -> int:
         """Refresh pace_vendor_cache. Active vendors only."""
