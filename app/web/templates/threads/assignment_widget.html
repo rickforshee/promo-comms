@@ -1,0 +1,29 @@
+<div class="assignment-widget" id="assignment-widget">
+    <div class="assignment-label">Assigned to</div>
+    {% if assigned_user %}
+    <div class="assignee-current">
+        <div class="initials-badge">{{ (assigned_user.display_name or assigned_user.email)[:2].upper() }}</div>
+        <span class="assignee-name">{{ assigned_user.display_name or assigned_user.email }}</span>
+    </div>
+    {% else %}
+    <div class="assignee-current unassigned">
+        <div class="initials-badge initials-empty">—</div>
+        <span class="assignee-name">Unassigned</span>
+    </div>
+    {% endif %}
+    <select
+        name="assigned_to"
+        class="assign-select"
+        hx-post="/threads/{{ thread.id }}/assign"
+        hx-target="#assignment-widget"
+        hx-swap="outerHTML"
+        hx-include="this"
+    >
+        <option value="">Unassigned</option>
+        {% for user in all_users %}
+        <option value="{{ user.id }}" {% if thread.assigned_to == user.id %}selected{% endif %}>
+            {{ user.display_name or user.email }}
+        </option>
+        {% endfor %}
+    </select>
+</div>

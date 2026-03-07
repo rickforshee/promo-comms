@@ -97,6 +97,13 @@ def _enrich_threads(thread_ids: list[int], db: Session) -> list[dict]:
     )
     tracking_count_map = {r.thread_id: r.cnt for r in tracking_counts}
 
+    # Assigned users — single query for all threads
+    assigned_user_ids = [t.assigned_to for t in threads if t.assigned_to]
+    assigned_users = {}
+    if assigned_user_ids:
+        users = db.query(User).filter(User.id.in_(assigned_user_ids)).all()
+        assigned_users = {u.id: u for u in users}
+
     return [
         {
             "thread":          t,
@@ -104,6 +111,7 @@ def _enrich_threads(thread_ids: list[int], db: Session) -> list[dict]:
             "job_count":       job_count_map.get(t.id, 0),
             "po_count":        po_count_map.get(t.id, 0),
             "tracking_count":  tracking_count_map.get(t.id, 0),
+            "assigned_user":   assigned_users.get(t.assigned_to),
         }
         for t in threads
     ]
@@ -331,6 +339,9 @@ async def thread_detail(
             "tracking_url":   _tracking_url(link.carrier, link.tracking_number),
         })
 
+    assigned_user = db.query(User).filter(User.id == thread.assigned_to).first() if thread.assigned_to else None
+    all_users = db.query(User).filter(User.active == True).order_by(User.display_name).all()
+
     return templates.TemplateResponse("threads/detail.html", {
         "request":      request,
         "current_user": current_user,
@@ -339,4 +350,11 @@ async def thread_detail(
         "jobs":         jobs,
         "pos":          pos,
         "tracking":     tracking,
+        "assigned_user": assigned_user,
+        "all_users":    all_users,
     })
+# update thread_detail() to add these two lines before the TemplateResponse:
+#
+#   all_users = db.query(User).filter(User.active == True).order_by(User.display_name).all()
+#
+#   "all_users":     all_users,

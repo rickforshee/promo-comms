@@ -1,6 +1,3 @@
-"""
-Promo Communications Platform — FastAPI Web Application
-"""
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -9,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 
-from app.web.routes import auth, threads
+from app.web.routes import auth, threads, assignment
 
 BASE_DIR = Path(__file__).parent
 
@@ -21,11 +18,12 @@ templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 app.include_router(auth.router)
 app.include_router(threads.router)
+app.include_router(assignment.router)
 
-from app.web.routes.threads import load_status_maps
 
 @app.on_event("startup")
 async def startup_event():
+    from app.web.routes.threads import load_status_maps
     load_status_maps()
 
 

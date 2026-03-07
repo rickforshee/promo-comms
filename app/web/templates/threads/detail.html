@@ -35,8 +35,13 @@
         {% endfor %}
     </div>
 
-    <!-- Right: Pace data + tracking -->
+    <!-- Right: Assignment + Pace data + tracking -->
     <div class="pace-panel">
+
+        <!-- Assignment widget -->
+        <div class="panel-section">
+            {% include "threads/assignment_widget.html" %}
+        </div>
 
         {% if tracking %}
         <div class="panel-section">

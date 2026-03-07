@@ -341,3 +341,59 @@ a:hover { text-decoration: underline; }
 .tracking-number { flex: 1; font-size: 13px; font-family: monospace; }
 .tracking-link   { color: #4361ee; font-weight: 600; }
 .tracking-link:hover { text-decoration: underline; }
+
+/* ── Assignment ─────────────────────────────────────────────────────────── */
+.initials-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #4361ee;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    flex-shrink: 0;
+}
+.initials-empty { background: #e5e7eb; color: #9ca3af; }
+.unassigned-dash { color: #d1d5db; font-size: 16px; }
+.thread-assigned { width: 40px; text-align: center; }
+
+.assignment-widget {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    padding: 12px;
+    margin-bottom: 8px;
+}
+.assignment-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: #6b7280;
+    margin-bottom: 8px;
+}
+.assignee-current {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+.assignee-name { font-size: 13px; font-weight: 500; color: #1a1a2e; }
+.assignee-current.unassigned .assignee-name { color: #9ca3af; }
+
+.assign-select {
+    width: 100%;
+    padding: 7px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    background: #fff;
+    color: #374151;
+    cursor: pointer;
+    outline: none;
+}
+.assign-select:focus { border-color: #4361ee; }

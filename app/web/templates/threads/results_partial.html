@@ -15,6 +15,7 @@
             <th>Subject</th>
             <th>From</th>
             <th>Latest</th>
+            <th>Assigned</th>
             <th>Links</th>
         </tr>
     </thead>
@@ -32,6 +33,15 @@
                     {{ item.latest_email.received_at.strftime("%b %d, %Y") }}
                 {% else %}—{% endif %}
             </td>
+            <td class="thread-assigned">
+                {% if item.assigned_user %}
+                <div class="initials-badge" title="{{ item.assigned_user.display_name or item.assigned_user.email }}">
+                    {{ (item.assigned_user.display_name or item.assigned_user.email)[:2].upper() }}
+                </div>
+                {% else %}
+                <span class="unassigned-dash">—</span>
+                {% endif %}
+            </td>
             <td class="thread-links">
                 {% if item.job_count %}
                 <span class="tag tag-job">{{ item.job_count }} job{% if item.job_count != 1 %}s{% endif %}</span>
@@ -45,7 +55,7 @@
             </td>
         </tr>
         {% else %}
-        <tr><td colspan="4" class="empty">No threads found.</td></tr>
+        <tr><td colspan="5" class="empty">No threads found.</td></tr>
         {% endfor %}
     </tbody>
 </table>
