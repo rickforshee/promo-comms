@@ -1,0 +1,74 @@
+{# Email list partial — target for reply send response and initial render #}
+{# Replaces #email-list-wrap on reply success                               #}
+
+<div id="email-list-wrap">
+
+    {% if sent_success %}
+    <div class="reply-success-banner" id="reply-success-banner">
+        ✓ Reply sent successfully.
+    </div>
+    <script>
+        // Auto-dismiss success banner after 4 seconds
+        setTimeout(() => {
+            const el = document.getElementById('reply-success-banner');
+            if (el) el.style.display = 'none';
+        }, 4000);
+    </script>
+    {% endif %}
+
+    {# ── Email thread ───────────────────────────────────────────────── #}
+    {% for email in emails %}
+    <div class="email-card {% if email.direction == 'outbound' %}email-card--outbound{% endif %}">
+        <div class="email-meta">
+            {% if email.direction == 'outbound' %}
+                <span class="email-direction-badge outbound-badge">Sent</span>
+                <span class="email-from">{{ email.sender_name or 'vividpromo' }}</span>
+                <span class="email-to-label">→ {{ email.recipient_emails | join(', ') if email.recipient_emails else '' }}</span>
+            {% else %}
+                <span class="email-from">{{ email.sender_name or email.sender_email or 'Unknown' }}</span>
+            {% endif %}
+            <span class="email-date">
+                {% if email.received_at %}{{ email.received_at.strftime("%b %d, %Y %I:%M %p") }}{% endif %}
+            </span>
+        </div>
+
+        {% if email.direction != 'outbound' %}
+        <div class="email-subject">{{ email.subject or '(no subject)' }}</div>
+        {% endif %}
+
+        <div class="email-body">
+            {% if email.direction == 'outbound' %}
+                {# Outbound: show plain text body (we composed it) #}
+                <pre class="email-text outbound-body">{{ email.body_text or '' }}</pre>
+            {% elif email.body_html %}
+                <iframe
+                    srcdoc="{{ email.body_html | e }}"
+                    class="email-iframe"
+                    onload="this.style.height=this.contentWindow.document.body.scrollHeight+'px'"
+                ></iframe>
+            {% elif email.body_text %}
+                <pre class="email-text">{{ email.body_text }}</pre>
+            {% else %}
+                <em class="empty">No body content.</em>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <p class="empty">No emails in this thread.</p>
+    {% endfor %}
+
+    {# ── Reply compose area ─────────────────────────────────────────── #}
+    <div id="reply-compose">
+        {# Collapsed by default — Reply button triggers HTMX load #}
+    </div>
+
+    <div class="reply-trigger-bar">
+        <button
+            class="btn btn-reply"
+            hx-get="/threads/{{ thread.id }}/reply-compose"
+            hx-target="#reply-compose"
+            hx-swap="outerHTML"
+        >↩ Reply</button>
+    </div>
+
+</div>

@@ -677,3 +677,239 @@ a:hover { text-decoration: underline; }
     padding: 6px 12px; font-size: 12px; color: #6b7280; cursor: pointer;
 }
 .btn-clear-dates:hover { background: #f3f4f6; color: #374151; }
+
+/* ── Reply compose panel ──────────────────────────────────────────────────── */
+
+.reply-trigger-bar {
+    padding: 12px 0 4px;
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+}
+
+.btn-reply {
+    background: #4f46e5;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 0.875rem;
+    cursor: pointer;
+    font-weight: 500;
+}
+.btn-reply:hover { opacity: 0.88; }
+
+.reply-compose-panel {
+    margin-top: 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    padding: 16px;
+}
+
+.reply-compose-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.reply-compose-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text);
+}
+
+.btn-icon.reply-discard {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 1rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+.btn-icon.reply-discard:hover {
+    background: var(--hover);
+    color: var(--text);
+}
+
+.reply-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.reply-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.reply-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.reply-optional {
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.reply-input {
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 7px 10px;
+    font-size: 0.875rem;
+    background: var(--bg);
+    color: var(--text);
+}
+.reply-input:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 0;
+    border-color: transparent;
+}
+.reply-input[readonly] {
+    background: var(--hover);
+    color: var(--text-muted);
+}
+
+.reply-textarea {
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 10px;
+    font-size: 0.875rem;
+    font-family: inherit;
+    background: var(--bg);
+    color: var(--text);
+    resize: vertical;
+    min-height: 120px;
+    line-height: 1.5;
+}
+.reply-textarea:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 0;
+    border-color: transparent;
+}
+
+.reply-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding-top: 4px;
+}
+
+.reply-send-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.reply-spinner {
+    display: none;
+}
+.htmx-request .reply-spinner {
+    display: inline;
+}
+
+.reply-error {
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 0.875rem;
+    color: #dc2626;
+    margin-bottom: 12px;
+}
+
+.reply-footer {
+    flex-shrink: 0;
+}
+
+
+/* ── Reply success banner ─────────────────────────────────────────────────── */
+
+.reply-success-banner {
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 0.875rem;
+    color: #16a34a;
+    margin-bottom: 12px;
+    font-weight: 500;
+}
+
+/* ── Outbound email card styling ──────────────────────────────────────────── */
+
+.email-card--outbound {
+    background: #f0f7ff;
+    border-left: 3px solid var(--accent);
+    margin-left: 24px;
+}
+
+.email-direction-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-radius: 3px;
+    padding: 2px 6px;
+}
+
+.outbound-badge {
+    background: var(--accent);
+    color: #fff;
+}
+
+.email-to-label {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+
+.outbound-body {
+    background: none;
+    border: none;
+    color: var(--text);
+    white-space: pre-wrap;
+    font-family: inherit;
+    font-size: 0.875rem;
+    margin: 0;
+    padding: 0;
+}
+/* ── Fixed-height detail layout — email panel scrolls, reply bar stays visible ── */
+
+.detail-layout {
+    align-items: stretch;   /* override any existing align-items */
+}
+
+.thread-tabs-wrap {
+    display: flex;
+    flex-direction: column;
+    align-self: start;
+    height: calc(100vh - 120px);
+    overflow: hidden;
+}
+
+.thread-tabs {
+    flex-shrink: 0;   /* tab bar never scrolls away */
+}
+
+.tab-content {
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.reply-trigger-bar {
+    padding: 12px 0 4px;
+    border-top: 1px solid #e2e8f0;
+}
+
+/* Cap iframe height — individual emails scroll within the card */
+.email-iframe {
+    max-height: 600px;
+    overflow-y: auto;
+}

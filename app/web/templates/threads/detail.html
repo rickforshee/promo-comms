@@ -24,28 +24,7 @@
         </div>
 
         <div id="tab-emails" class="tab-content active">
-            {% for email in emails %}
-            <div class="email-card">
-                <div class="email-meta">
-                    <span class="email-from">{{ email.sender_name or email.sender_email or "Unknown" }}</span>
-                    <span class="email-date">
-                        {% if email.received_at %}{{ email.received_at.strftime("%b %d, %Y %I:%M %p") }}{% endif %}
-                    </span>
-                </div>
-                <div class="email-subject">{{ email.subject or "(no subject)" }}</div>
-                <div class="email-body">
-                    {% if email.body_html %}
-                        <iframe srcdoc="{{ email.body_html | e }}" class="email-iframe" onload="this.style.height=this.contentWindow.document.body.scrollHeight+'px'"></iframe>
-                    {% elif email.body_text %}
-                        <pre class="email-text">{{ email.body_text }}</pre>
-                    {% else %}
-                        <em class="empty">No body content.</em>
-                    {% endif %}
-                </div>
-            </div>
-            {% else %}
-            <p class="empty">No emails in this thread.</p>
-            {% endfor %}
+            {% include "threads/email_list_partial.html" %}
         </div>
 
         <div id="tab-notes" class="tab-content">
@@ -59,7 +38,9 @@
     <div class="pace-panel">
 
         <!-- Status -->
-        {% include "threads/status_widget.html" %}
+        <div class="panel-section">
+            {% include "threads/status_widget.html" %}
+        </div>
 
         <!-- Assignment -->
         <div class="panel-section">

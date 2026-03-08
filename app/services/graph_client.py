@@ -46,6 +46,26 @@ class GraphClient:
             response = requests.get(url, headers=self._headers(), params=params)
         response.raise_for_status()
         return response.json()
+    
+    def _post(self, url: str, json: dict) -> dict | None:
+        """POST to a Graph API endpoint with auth and error handling."""
+        token = self._get_token()
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        }
+        resp = requests.post(url, headers=headers, json=json, timeout=30)
+        if resp.status_code == 202:
+            # 202 Accepted — reply sent, no body
+            return None
+        if resp.status_code not in (200, 201):
+            raise RuntimeError(
+                f"Graph POST failed [{resp.status_code}]: {resp.text[:500]}"
+            )
+        if resp.content:
+            return resp.json()
+        return None
+
 
     # ─── Mailbox Operations ───────────────────────────────────────────────────
 
@@ -95,3 +115,85 @@ class GraphClient:
             f"/attachments/{attachment_id}"
         )
         return self._get(url)
+    
+    def reply_to_message(
+        self,
+        message_id: str,
+        comment: str,
+        to_recipients: list[dict] | None = None,
+        cc_recipients: list[dict] | None = None,
+    ) -> None:
+            """
+            Reply to a message from the shared mailbox.
+
+            Uses Graph API POST /messages/{id}/reply which sends immediately.
+
+            Args:
+                message_id:     M365 message ID to reply to.
+                comment:        HTML body of the reply.
+                to_recipients:  List of {"address": ..., "name": ...} dicts.
+                                If omitted, Graph replies to the original sender.
+                cc_recipients:  Optional CC list in same format.
+            """
+            mailbox = config.SHARED_MAILBOX
+            url = (
+                f"{config.GRAPH_BASE_URL}"
+                f"/users/{mailbox}/messages/{message_id}/reply"
+            )
+
+            payload: dict = {"comment": comment}
+
+            # Only override recipients if explicitly provided
+            message_overrides: dict = {}
+            if to_recipients:
+                message_overrides["toRecipients"] = [
+                    {"emailAddress": r} for r in to_recipients
+                ]
+            if cc_recipients:
+                message_overrides["ccRecipients"] = [
+                    {"emailAddress": r} for r in cc_recipients
+                ]
+            if message_overrides:
+                payload["message"] = message_overrides
+
+            self._post(url, json=payload)
+
+    def send_new_message(
+        self,
+        to_recipients: list[dict],
+        subject: str,
+        body_html: str,
+        cc_recipients: list[dict] | None = None,
+    ) -> None:
+        """
+        Send a new email from the shared mailbox (not a reply).
+
+        Args:
+            to_recipients:  List of {"address": ..., "name": ...} dicts.
+            subject:        Email subject line.
+            body_html:      HTML body content.
+            cc_recipients:  Optional CC list in same format.
+        """
+        mailbox = config.SHARED_MAILBOX
+        url = f"{config.GRAPH_BASE_URL}/users/{mailbox}/sendMail"
+
+        payload = {
+            "message": {
+                "subject": subject,
+                "body": {
+                    "contentType": "HTML",
+                    "content": body_html,
+                },
+                "toRecipients": [
+                    {"emailAddress": r} for r in to_recipients
+                ],
+            },
+            "saveToSentItems": True,
+        }
+        if cc_recipients:
+            payload["message"]["ccRecipients"] = [
+                {"emailAddress": r} for r in cc_recipients
+            ]
+
+        self._post(url, json=payload)
+

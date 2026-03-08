@@ -1,0 +1,97 @@
+{# Reply compose panel — loaded via HTMX when Reply button is clicked #}
+
+<div id="reply-compose" class="reply-compose-panel">
+
+    {% if error %}
+    <div class="reply-error">
+        ⚠ {{ error }}
+    </div>
+    {% endif %}
+
+    <div class="reply-compose-header">
+        <span class="reply-compose-title">↩ Reply</span>
+        <button
+            type="button"
+            class="btn-icon reply-discard"
+            hx-get="/threads/{{ thread.id }}/reply-compose-closed"
+            hx-target="#reply-compose"
+            hx-swap="outerHTML"
+            title="Discard"
+        >✕</button>
+    </div>
+
+    <form
+        hx-post="/threads/{{ thread.id }}/reply"
+        hx-target="#email-list-wrap"
+        hx-swap="outerHTML"
+        hx-indicator="#reply-sending"
+        class="reply-form"
+    >
+        <input type="hidden" name="reply_to_message_id" value="{{ reply_to_message_id or '' }}">
+
+        <div class="reply-field">
+            <label class="reply-label">To</label>
+            <div class="reply-to-row">
+                <input
+                    type="email"
+                    name="to_email"
+                    value="{{ to_email }}"
+                    class="reply-input"
+                    placeholder="recipient@example.com"
+                    required
+                >
+                <input
+                    type="hidden"
+                    name="to_name"
+                    value="{{ to_name }}"
+                >
+            </div>
+        </div>
+
+        <div class="reply-field">
+            <label class="reply-label">CC <span class="reply-optional">(optional)</span></label>
+            <input
+                type="text"
+                name="cc_emails"
+                value="{{ cc_emails or '' }}"
+                class="reply-input"
+                placeholder="cc1@example.com, cc2@example.com"
+            >
+        </div>
+
+        <div class="reply-field">
+            <label class="reply-label">Subject</label>
+            <input
+                type="text"
+                name="subject"
+                value="{{ subject }}"
+                class="reply-input reply-subject"
+                readonly
+            >
+        </div>
+
+        <div class="reply-field reply-body-field">
+            <textarea
+                name="body"
+                class="reply-textarea"
+                placeholder="Type your reply here..."
+                rows="6"
+                required
+            >{{ body or '' }}</textarea>
+        </div>
+
+        <div class="reply-actions">
+            <button type="submit" class="btn btn-primary reply-send-btn">
+                <span id="reply-sending" class="htmx-indicator reply-spinner">⏳</span>
+                Send Reply
+            </button>
+            <button
+                type="button"
+                class="btn btn-secondary"
+                hx-get="/threads/{{ thread.id }}/reply-compose-closed"
+                hx-target="#reply-compose"
+                hx-swap="outerHTML"
+            >Cancel</button>
+        </div>
+    </form>
+</div>
