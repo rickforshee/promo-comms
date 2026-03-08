@@ -1,14 +1,10 @@
 {# Email list partial — target for reply send response and initial render #}
-{# Replaces #email-list-wrap on reply success                               #}
-
 <div id="email-list-wrap">
-
     {% if sent_success %}
     <div class="reply-success-banner" id="reply-success-banner">
         ✓ Reply sent successfully.
     </div>
     <script>
-        // Auto-dismiss success banner after 4 seconds
         setTimeout(() => {
             const el = document.getElementById('reply-success-banner');
             if (el) el.style.display = 'none';
@@ -16,7 +12,6 @@
     </script>
     {% endif %}
 
-    {# ── Email thread ───────────────────────────────────────────────── #}
     {% for email in emails %}
     <div class="email-card {% if email.direction == 'outbound' %}email-card--outbound{% endif %}">
         <div class="email-meta">
@@ -33,14 +28,11 @@
                 {% if email.received_at %}{{ email.received_at.strftime("%b %d, %Y %I:%M %p") }}{% endif %}
             </span>
         </div>
-
         {% if email.direction != 'outbound' %}
         <div class="email-subject">{{ email.subject or '(no subject)' }}</div>
         {% endif %}
-
         <div class="email-body">
             {% if email.direction == 'outbound' %}
-                {# Outbound: show plain text body (we composed it) #}
                 <pre class="email-text outbound-body">{{ email.body_text or '' }}</pre>
             {% elif email.body_html %}
                 <iframe
@@ -54,16 +46,45 @@
                 <em class="empty">No body content.</em>
             {% endif %}
         </div>
+        {% set proof_types = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'] %}
+        {% if email.attachments %}
+        <div class="email-attachments">
+            {% for att in email.attachments %}
+            <div class="attachment-pill" id="att-pill-{{ att.id }}">
+                <span class="attachment-icon">
+                    {% if att.content_type == 'application/pdf' %}📄
+                    {% elif att.content_type and att.content_type.startswith('image/') %}🖼
+                    {% else %}📎
+                    {% endif %}
+                </span>
+                <a href="/attachments/{{ att.id }}/file"
+                   target="_blank"
+                   class="attachment-name">{{ att.filename or 'attachment' }}</a>
+                {% if att.file_size %}
+                <span class="attachment-size">{{ (att.file_size / 1024) | int }}KB</span>
+                {% endif %}
+                {% if att.content_type in proof_types %}
+                    {% if att.proof %}
+                        <span class="proof-marked-badge">✓ Proof</span>
+                    {% else %}
+                        <button class="btn-mark-proof"
+                                hx-post="/threads/{{ thread.id }}/attachments/{{ att.id }}/mark-proof"
+                                hx-target="#att-pill-{{ att.id }} .btn-mark-proof"
+                                hx-swap="outerHTML">
+                            Mark as Proof
+                        </button>
+                    {% endif %}
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
     </div>
     {% else %}
     <p class="empty">No emails in this thread.</p>
     {% endfor %}
 
-    {# ── Reply compose area ─────────────────────────────────────────── #}
-    <div id="reply-compose">
-        {# Collapsed by default — Reply button triggers HTMX load #}
-    </div>
-
+    <div id="reply-compose"></div>
 </div>
 <div class="reply-trigger-bar">
     <button

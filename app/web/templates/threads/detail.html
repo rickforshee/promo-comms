@@ -21,12 +21,25 @@
                 hx-swap="outerHTML"
                 hx-trigger="click once"
             >Notes</button>
+            <button
+                class="tab-btn"
+                onclick="switchTab('proofs', this)"
+                hx-get="/threads/{{ thread.id }}/proofs"
+                hx-target="#proofs-panel"
+                hx-swap="outerHTML"
+                hx-trigger="click once"
+            >Proofs</button>
         </div>
 
         <div id="tab-emails" class="tab-content active">
             {% include "threads/email_list_partial.html" %}
         </div>
 
+        <div id="tab-proofs" class="tab-content">
+            <div id="proofs-panel">
+                <p class="empty">Click Proofs to load.</p>
+            </div>
+        </div>
         <div id="tab-notes" class="tab-content">
             <div id="notes-panel">
                 <p class="empty notes-empty">Click Notes to load.</p>

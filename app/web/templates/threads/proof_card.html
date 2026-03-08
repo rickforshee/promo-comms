@@ -1,0 +1,132 @@
+{% set proof = item.proof %}
+{% set attachment = item.attachment %}
+{% set history = item.history %}
+{% set is_image = attachment and attachment.content_type and attachment.content_type.startswith('image/') %}
+{% set is_pdf   = attachment and attachment.content_type == 'application/pdf' %}
+
+<div class="proof-card" id="proof-card-{{ proof.id }}">
+
+    <div class="proof-card-header">
+        <div class="proof-card-title">
+            <span class="proof-filename">{{ attachment.filename if attachment else '(unknown file)' }}</span>
+            <span class="proof-status-badge proof-status--{{ proof.status.value }}">
+                {{ proof.status.value | replace('_', ' ') | title }}
+            </span>
+        </div>
+        {% if attachment %}
+        <a href="/attachments/{{ attachment.id }}/file" target="_blank" class="btn btn-sm btn-outline">
+            ↗ Open File
+        </a>
+        {% endif %}
+    </div>
+
+    {% if attachment %}
+    <div class="proof-preview">
+        {% if is_image %}
+            <img src="/attachments/{{ attachment.id }}/file"
+                 alt="{{ attachment.filename }}"
+                 class="proof-img-preview">
+        {% elif is_pdf %}
+            <div class="proof-pdf-placeholder">
+                <span class="proof-pdf-icon">📄</span>
+                <span>PDF — <a href="/attachments/{{ attachment.id }}/file" target="_blank">Open in new tab ↗</a></span>
+            </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if proof.status != ProofStatus.approved %}
+    <div class="proof-actions">
+        {% if proof.status == ProofStatus.received %}
+            <form hx-post="/proofs/{{ proof.id }}/status"
+                  hx-target="#proof-card-{{ proof.id }}"
+                  hx-swap="outerHTML">
+                <input type="hidden" name="new_status" value="sent_for_approval">
+                <button type="submit" class="btn btn-primary btn-sm">✉ Send for Approval</button>
+            </form>
+
+        {% elif proof.status == ProofStatus.sent_for_approval %}
+            <form hx-post="/proofs/{{ proof.id }}/status"
+                  hx-target="#proof-card-{{ proof.id }}"
+                  hx-swap="outerHTML"
+                  style="display:inline;">
+                <input type="hidden" name="new_status" value="approved">
+                <input type="hidden" name="notes" value="">
+                <button type="submit" class="btn btn-success btn-sm">✓ Approve</button>
+            </form>
+            <button class="btn btn-warning btn-sm"
+                    onclick="toggleProofNoteForm('revision-{{ proof.id }}')">
+                ✏ Request Revision
+            </button>
+            <button class="btn btn-danger btn-sm"
+                    onclick="toggleProofNoteForm('reject-{{ proof.id }}')">
+                ✗ Reject
+            </button>
+
+            <div id="revision-{{ proof.id }}" class="proof-note-form" style="display:none;">
+                <form hx-post="/proofs/{{ proof.id }}/status"
+                      hx-target="#proof-card-{{ proof.id }}"
+                      hx-swap="outerHTML">
+                    <input type="hidden" name="new_status" value="revision_requested">
+                    <textarea name="notes" class="proof-note-input"
+                              placeholder="Describe the required revisions…" rows="3" required></textarea>
+                    <div class="proof-note-actions">
+                        <button type="submit" class="btn btn-warning btn-sm">Submit Revision Request</button>
+                        <button type="button" class="btn btn-ghost btn-sm"
+                                onclick="toggleProofNoteForm('revision-{{ proof.id }}')">Cancel</button>
+                    </div>
+                </form>
+            </div>
+
+            <div id="reject-{{ proof.id }}" class="proof-note-form" style="display:none;">
+                <form hx-post="/proofs/{{ proof.id }}/status"
+                      hx-target="#proof-card-{{ proof.id }}"
+                      hx-swap="outerHTML">
+                    <input type="hidden" name="new_status" value="rejected">
+                    <textarea name="notes" class="proof-note-input"
+                              placeholder="Reason for rejection…" rows="3" required></textarea>
+                    <div class="proof-note-actions">
+                        <button type="submit" class="btn btn-danger btn-sm">Confirm Rejection</button>
+                        <button type="button" class="btn btn-ghost btn-sm"
+                                onclick="toggleProofNoteForm('reject-{{ proof.id }}')">Cancel</button>
+                    </div>
+                </form>
+            </div>
+
+        {% elif proof.status in [ProofStatus.rejected, ProofStatus.revision_requested] %}
+            <form hx-post="/proofs/{{ proof.id }}/status"
+                  hx-target="#proof-card-{{ proof.id }}"
+                  hx-swap="outerHTML">
+                <input type="hidden" name="new_status" value="sent_for_approval">
+                <input type="hidden" name="notes" value="">
+                <button type="submit" class="btn btn-primary btn-sm">↩ Re-send for Approval</button>
+            </form>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="proof-actions">
+        <span class="proof-approved-stamp">✓ Approved</span>
+    </div>
+    {% endif %}
+
+    {% if history %}
+    <div class="proof-history">
+        <div class="proof-history-title">History</div>
+        {% for entry, user in history %}
+        <div class="proof-history-row">
+            <span class="proof-status-badge proof-status--{{ entry.status.value }}">
+                {{ entry.status.value | replace('_', ' ') | title }}
+            </span>
+            <span class="proof-history-meta">
+                {{ user.display_name or user.email }}
+                · {{ entry.changed_at.strftime("%b %d, %Y %I:%M %p") }}
+            </span>
+            {% if entry.notes %}
+            <div class="proof-history-notes">{{ entry.notes }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+</div>

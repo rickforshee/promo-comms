@@ -25,6 +25,9 @@
         <tr class="thread-row" onclick="window.location='/threads/{{ item.thread.id }}'">
             <td class="thread-subject">
                 {{ item.thread.subject or "(no subject)" }}
+                {% if item.has_attachments %}
+                <span class="attach-indicator" title="Has attachments">📎</span>
+                {% endif %}
             </td>
             <td class="thread-from">
                 {% if item.latest_email %}

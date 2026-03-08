@@ -944,3 +944,56 @@ a:hover { text-decoration: underline; }
     overflow-y: auto;
     min-height: 0;
 }
+
+/* ── Attachment pills ───────────────────────────────────────────────────── */
+.email-attachments { padding: 8px 14px 10px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 8px; }
+.attachment-pill { display: inline-flex; align-items: center; gap: 6px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; font-size: 0.8rem; }
+.attachment-icon { font-size: 1rem; }
+.attachment-name { color: var(--accent); text-decoration: none; }
+.attachment-name:hover { text-decoration: underline; }
+.attachment-size { color: var(--text-muted); font-size: 0.75rem; }
+.btn-mark-proof { font-size: 0.72rem; font-weight: 600; padding: 2px 8px; border-radius: 4px; border: 1px solid var(--accent); background: var(--accent-light); color: var(--accent); cursor: pointer; transition: background .15s; }
+.btn-mark-proof:hover { background: var(--accent); color: #fff; }
+.proof-marked-badge { font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; background: #d1fae5; color: #065f46; }
+
+/* ── Proof cards ────────────────────────────────────────────────────────── */
+.proof-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 20px; overflow: hidden; }
+.proof-card-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); gap: 12px; }
+.proof-card-title { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.proof-filename { font-weight: 600; font-size: 0.9rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.proof-status-badge { font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 10px; white-space: nowrap; text-transform: capitalize; }
+.proof-status--received           { background: #f3f4f6; color: #374151; }
+.proof-status--sent_for_approval  { background: #fef3c7; color: #b45309; }
+.proof-status--approved           { background: #d1fae5; color: #065f46; }
+.proof-status--rejected           { background: #fee2e2; color: #991b1b; }
+.proof-status--revision_requested { background: #ede9fe; color: #5b21b6; }
+.proof-preview { padding: 12px 16px; border-bottom: 1px solid var(--border); background: #fafafa; }
+.proof-img-preview { max-width: 100%; max-height: 400px; border-radius: 6px; display: block; }
+.proof-pdf-placeholder { display: flex; align-items: center; gap: 10px; color: var(--text-muted); font-size: 0.875rem; padding: 12px 0; }
+.proof-pdf-icon { font-size: 1.5rem; }
+.proof-actions { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.proof-approved-stamp { font-weight: 700; color: #065f46; font-size: 0.875rem; }
+.proof-note-form { width: 100%; margin-top: 8px; }
+.proof-note-input { width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-size: 0.875rem; font-family: inherit; resize: vertical; box-sizing: border-box; }
+.proof-note-actions { display: flex; gap: 8px; margin-top: 6px; }
+.proof-history { padding: 12px 16px; }
+.proof-history-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); margin-bottom: 8px; }
+.proof-history-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; padding: 6px 0; border-bottom: 1px solid #f4f4f6; font-size: 0.835rem; }
+.proof-history-row:last-child { border-bottom: none; }
+.proof-history-meta { color: var(--text-muted); font-size: 0.8rem; }
+.proof-history-notes { width: 100%; color: var(--text); background: var(--bg); border-radius: 4px; padding: 4px 8px; font-size: 0.825rem; margin-top: 2px; }
+.proof-empty { padding: 32px 20px; text-align: center; color: var(--text-muted); }
+.proof-empty-hint { font-size: 0.835rem; margin-top: 6px; }
+.btn-sm { font-size: 0.8rem; padding: 5px 12px; }
+.btn-success { background: #10b981; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+.btn-success:hover { background: #059669; }
+.btn-warning { background: #f59e0b; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+.btn-warning:hover { background: #d97706; }
+.btn-danger { background: #ef4444; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+.btn-danger:hover { background: #dc2626; }
+.btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-weight: 600; }
+.btn-ghost:hover { background: var(--hover); }
+.btn-outline { background: transparent; color: var(--accent); border: 1px solid var(--accent); border-radius: 6px; padding: 4px 10px; font-size: 0.8rem; text-decoration: none; font-weight: 600; }
+.btn-outline:hover { background: var(--accent-light); }
+
+.attach-indicator { font-size: 0.85rem; margin-left: 4px; opacity: 0.6; }

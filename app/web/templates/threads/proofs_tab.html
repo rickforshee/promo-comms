@@ -1,0 +1,19 @@
+<div id="proofs-panel">
+    {% if proof_data %}
+        {% for item in proof_data %}
+            {% include "threads/proof_card.html" %}
+        {% endfor %}
+    {% else %}
+    <div class="proof-empty">
+        <p>No proofs on this thread yet.</p>
+        <p class="proof-empty-hint">Open the Emails tab and click <strong>Mark as Proof</strong> on a PDF, JPG, or PNG attachment.</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function toggleProofNoteForm(id) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+</script>

@@ -4,10 +4,11 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 from sqlalchemy import create_engine, func, or_, text
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app import config
 from app.models import (
+    Attachment,
     Thread, Email, ThreadJobLink, ThreadPOLink, ThreadTrackingLink,
     PaceJobCache, PacePOCache, PaceVendorCache, PaceCustomerCache, LinkSource,
 )
@@ -123,6 +124,16 @@ def _enrich_threads(thread_ids: list[int], db: Session) -> list[dict]:
     )
     tracking_count_map = {r.thread_id: r.cnt for r in tracking_counts}
 
+    # Threads with attachments
+    attachment_thread_ids = set(
+        row[0] for row in
+        db.query(Email.thread_id)
+        .join(Attachment, Attachment.email_id == Email.id)
+        .filter(Email.thread_id.in_(thread_ids))
+        .distinct()
+        .all()
+    )
+
     # Assigned users — single query for all threads
     assigned_user_ids = [t.assigned_to for t in threads if t.assigned_to]
     assigned_users = {}
@@ -139,6 +150,7 @@ def _enrich_threads(thread_ids: list[int], db: Session) -> list[dict]:
             "tracking_count":  tracking_count_map.get(t.id, 0),
             "assigned_user":   assigned_users.get(t.assigned_to),
             "status":          (getattr(t, "status", None).value if getattr(t, "status", None) else "open"),
+            "has_attachments": t.id in attachment_thread_ids,
         }
         for t in threads
     ]
@@ -385,6 +397,7 @@ async def thread_detail(
     emails = (
         db.query(Email)
         .filter(Email.thread_id == thread_id)
+        .options(joinedload(Email.attachments).joinedload(Attachment.proof))
         .order_by(Email.received_at.asc())
         .all()
     )
