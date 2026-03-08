@@ -1,5 +1,5 @@
 # Attachments directory
-app/attachments/
+attachments/
 
 # Environment and secrets
 .env

@@ -21,9 +21,11 @@
     <div class="email-card {% if email.direction == 'outbound' %}email-card--outbound{% endif %}">
         <div class="email-meta">
             {% if email.direction == 'outbound' %}
-                <span class="email-direction-badge outbound-badge">Sent</span>
-                <span class="email-from">{{ email.sender_name or 'vividpromo' }}</span>
-                <span class="email-to-label">→ {{ email.recipient_emails | join(', ') if email.recipient_emails else '' }}</span>
+                <div class="email-meta-left">
+                    <span class="email-direction-badge outbound-badge">Sent</span>
+                    <span class="email-from">{{ email.sender_name or 'vividpromo' }}</span>
+                    <span class="email-to-label">→ {{ email.recipient_emails | join(', ') if email.recipient_emails else '' }}</span>
+                </div>
             {% else %}
                 <span class="email-from">{{ email.sender_name or email.sender_email or 'Unknown' }}</span>
             {% endif %}
@@ -62,13 +64,12 @@
         {# Collapsed by default — Reply button triggers HTMX load #}
     </div>
 
-    <div class="reply-trigger-bar">
-        <button
-            class="btn btn-reply"
-            hx-get="/threads/{{ thread.id }}/reply-compose"
-            hx-target="#reply-compose"
-            hx-swap="outerHTML"
-        >↩ Reply</button>
-    </div>
-
+</div>
+<div class="reply-trigger-bar">
+    <button
+        class="btn btn-reply"
+        hx-get="/threads/{{ thread.id }}/reply-compose"
+        hx-target="#reply-compose"
+        hx-swap="outerHTML"
+    >↩ Reply</button>
 </div>

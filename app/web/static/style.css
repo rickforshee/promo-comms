@@ -1,6 +1,17 @@
 /* ── Reset & Base ──────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+:root {
+    --accent:      #4f46e5;
+    --accent-light: #eef2ff;
+    --border:      #e5e7eb;
+    --surface:     #ffffff;
+    --bg:          #f5f7fa;
+    --text:        #1a1a2e;
+    --text-muted:  #6b7280;
+    --hover:       #f3f4f6;
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     font-size: 14px;
@@ -760,6 +771,8 @@ a:hover { text-decoration: underline; }
 }
 
 .reply-input {
+    display: block;
+    width: 100%;
     border: 1px solid var(--border);
     border-radius: 5px;
     padding: 7px 10px;
@@ -912,4 +925,22 @@ a:hover { text-decoration: underline; }
 .email-iframe {
     max-height: 600px;
     overflow-y: auto;
+}
+
+.email-meta-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tab-content.active {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#email-list-wrap {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
 }
