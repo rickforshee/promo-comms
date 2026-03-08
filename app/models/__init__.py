@@ -44,6 +44,12 @@ class ProofStatus(str, enum.Enum):
     rejected           = "rejected"
     revision_requested = "revision_requested"
 
+class ThreadStatus(enum.Enum):
+    open     = "open"
+    pending  = "pending"
+    resolved = "resolved"
+    closed   = "closed"
+
 
 # ─── Users ────────────────────────────────────────────────────────────────────
 

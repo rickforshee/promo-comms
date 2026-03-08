@@ -122,6 +122,9 @@ def job_pace_cache_refresh():
         vendors = svc.refresh_vendors()
         logger.info(f"Pace cache: vendors={vendors}")
 
+        vendornames = svc.refresh_vendor_names()
+        logger.info(f"Pace cache: vendornames={vendornames}")
+
         customers = svc.refresh_customers()
         logger.info(f"Pace cache: customers={customers}")
 
