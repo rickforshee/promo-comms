@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard — Promo Comms</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        /* ── Dashboard layout ───────────────────────────────────────────── */
+        .dash-page { max-width: 1200px; margin: 0 auto; padding: 28px 24px; }
+        .dash-title { font-size: 1.4rem; font-weight: 700; color: var(--text); margin-bottom: 24px; }
+
+        /* ── Stat cards ─────────────────────────────────────────────────── */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 14px;
+            margin-bottom: 32px;
+        }
+        .stat-card {
+            background: var(--surface);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,.08);
+            border-top: 3px solid transparent;
+            text-decoration: none;
+            display: block;
+            transition: box-shadow .15s;
+        }
+        .stat-card:hover { box-shadow: 0 3px 10px rgba(0,0,0,.12); text-decoration: none; }
+        .stat-card--total  { border-top-color: #94a3b8; }
+        .stat-card--open   { border-top-color: var(--accent); }
+        .stat-card--pending { border-top-color: #f59e0b; }
+        .stat-card--resolved { border-top-color: #10b981; }
+        .stat-card--closed  { border-top-color: #6b7280; }
+
+        .stat-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+                      letter-spacing: .05em; color: var(--text-muted); margin-bottom: 8px; }
+        .stat-value { font-size: 2rem; font-weight: 700; color: var(--text); line-height: 1; }
+        .stat-sub   { font-size: 0.75rem; color: var(--text-muted); margin-top: 6px; }
+
+        /* ── Two-column section layout ──────────────────────────────────── */
+        .dash-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .dash-grid--wide { grid-template-columns: 2fr 1fr; }
+
+        /* ── Panels ─────────────────────────────────────────────────────── */
+        .dash-panel {
+            background: var(--surface);
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,.08);
+            overflow: hidden;
+        }
+        .dash-panel-header {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .dash-panel-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: var(--text-muted);
+        }
+        .dash-panel-badge {
+            font-size: 0.72rem;
+            font-weight: 700;
+            background: var(--accent-light);
+            color: var(--accent);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+        .dash-panel-badge--warn {
+            background: #fef3c7;
+            color: #b45309;
+        }
+
+        /* ── Tables ─────────────────────────────────────────────────────── */
+        .dash-table { width: 100%; border-collapse: collapse; }
+        .dash-table th {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: var(--text-muted);
+            padding: 10px 18px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        .dash-table td {
+            padding: 10px 18px;
+            font-size: 0.855rem;
+            color: var(--text);
+            border-bottom: 1px solid #f4f4f6;
+        }
+        .dash-table tr:last-child td { border-bottom: none; }
+        .dash-table tbody tr:hover { background: var(--hover); cursor: pointer; }
+        .dash-table .td-subject {
+            max-width: 280px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .dash-table .td-num { text-align: right; font-weight: 600; }
+        .dash-table .td-muted { color: var(--text-muted); font-size: 0.8rem; }
+
+        /* ── Assignee bar ───────────────────────────────────────────────── */
+        .assignee-row { display: flex; align-items: center; gap: 12px; padding: 10px 18px;
+                        border-bottom: 1px solid #f4f4f6; }
+        .assignee-row:last-child { border-bottom: none; }
+        .assignee-name { flex: 1; font-size: 0.855rem; color: var(--text); }
+        .assignee-bar-wrap { flex: 2; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+        .assignee-bar { height: 100%; background: var(--accent); border-radius: 4px; min-width: 3px; }
+        .assignee-count { font-size: 0.855rem; font-weight: 600; color: var(--text); min-width: 28px; text-align: right; }
+
+        /* ── Status pill ────────────────────────────────────────────────── */
+        .pill { display: inline-block; font-size: 0.72rem; font-weight: 700;
+                padding: 2px 8px; border-radius: 10px; text-transform: capitalize; }
+        .pill--open     { background: var(--accent-light); color: var(--accent); }
+        .pill--pending  { background: #fef3c7; color: #b45309; }
+        .pill--resolved { background: #d1fae5; color: #065f46; }
+        .pill--closed   { background: #f3f4f6; color: #6b7280; }
+
+        /* ── Empty state ────────────────────────────────────────────────── */
+        .dash-empty { padding: 24px 18px; color: var(--text-muted); font-size: 0.855rem; text-align: center; }
+
+        /* ── Alert strip ────────────────────────────────────────────────── */
+        .dash-alert {
+            display: flex; align-items: center; gap: 10px;
+            background: #fef3c7; border: 1px solid #fcd34d;
+            border-radius: 8px; padding: 12px 16px;
+            margin-bottom: 20px; font-size: 0.875rem; color: #92400e;
+        }
+        .dash-alert strong { font-weight: 700; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <a href="/" class="navbar-brand">Promo Comms</a>
+    <div class="navbar-links">
+        <a href="/threads">Inbox</a>
+        <a href="/dashboard" style="color:#fff; font-weight:600;">Dashboard</a>
+        <div class="nav-user-menu">
+            <button class="nav-user-btn" onclick="toggleUserMenu(event)">
+                <div class="initials-badge initials-badge-sm">
+                    {{ current_user.display_name[:2].upper() if current_user.display_name else '?' }}
+                </div>
+                <span class="nav-user-name">{{ current_user.display_name or '' }}</span>
+                <span class="nav-caret">▾</span>
+            </button>
+            <div class="nav-dropdown" id="nav-dropdown">
+                <a href="/profile" class="nav-dropdown-item">My Profile</a>
+                <div class="nav-dropdown-divider"></div>
+                <a href="/admin/users" class="nav-dropdown-item">Manage Users</a>
+                <div class="nav-dropdown-divider"></div>
+                <a href="/logout" class="nav-dropdown-item nav-dropdown-item--danger">Sign Out</a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div class="dash-page">
+    <div class="dash-title">Dashboard</div>
+
+    {# ── Alert: unlinked threads ───────────────────────────────────────── #}
+    {% if unlinked_count > 0 %}
+    <div class="dash-alert">
+        <span>⚠</span>
+        <span><strong>{{ unlinked_count }}</strong> open thread{{ 's' if unlinked_count != 1 }} have no linked Job or PO.
+            <a href="/threads?linked=false" style="color:#92400e; text-decoration:underline;">Review them →</a>
+        </span>
+    </div>
+    {% endif %}
+
+    {# ── Stat cards ───────────────────────────────────────────────────── #}
+    <div class="stat-grid">
+        <a href="/threads" class="stat-card stat-card--total">
+            <div class="stat-label">All Threads</div>
+            <div class="stat-value">{{ counts.total | default(0) }}</div>
+        </a>
+        <a href="/threads?status=open" class="stat-card stat-card--open">
+            <div class="stat-label">Open</div>
+            <div class="stat-value">{{ counts.open }}</div>
+            <div class="stat-sub">{{ unassigned_open }} unassigned</div>
+        </a>
+        <a href="/threads?status=pending" class="stat-card stat-card--pending">
+            <div class="stat-label">Pending</div>
+            <div class="stat-value">{{ counts.pending }}</div>
+        </a>
+        <a href="/threads?status=resolved" class="stat-card stat-card--resolved">
+            <div class="stat-label">Resolved</div>
+            <div class="stat-value">{{ counts.resolved }}</div>
+        </a>
+        <a href="/threads?status=closed" class="stat-card stat-card--closed">
+            <div class="stat-label">Closed</div>
+            <div class="stat-value">{{ counts.closed }}</div>
+        </a>
+    </div>
+
+    {# ── Row 1: Assignee breakdown + Stale threads ─────────────────────── #}
+    <div class="dash-grid dash-grid--wide">
+
+        {# Assignee breakdown #}
+        <div class="dash-panel">
+            <div class="dash-panel-header">
+                <span class="dash-panel-title">Open Threads by Assignee</span>
+                {% if unassigned_open > 0 %}
+                <span class="dash-panel-badge dash-panel-badge--warn">{{ unassigned_open }} unassigned</span>
+                {% endif %}
+            </div>
+            {% set max_count = by_assignee[0][1] if (by_assignee and by_assignee[0][1] > 0) else 1 %}
+            {% if by_assignee %}
+                {% for name, count in by_assignee %}
+                {% if count > 0 %}
+                <div class="assignee-row">
+                    <div class="assignee-name">{{ name }}</div>
+                    <div class="assignee-bar-wrap">
+                        <div class="assignee-bar" style="width: {{ ((count / max_count) * 100) | int }}%"></div>
+                    </div>
+                    <div class="assignee-count">{{ count }}</div>
+                </div>
+                {% endif %}
+                {% endfor %}
+                {% if unassigned_open > 0 %}
+                <div class="assignee-row">
+                    <div class="assignee-name" style="color: var(--text-muted); font-style: italic;">Unassigned</div>
+                    <div class="assignee-bar-wrap">
+                        <div class="assignee-bar" style="width: {{ ((unassigned_open / max_count) * 100) | int }}%; background: #fbbf24;"></div>
+                    </div>
+                    <div class="assignee-count">{{ unassigned_open }}</div>
+                </div>
+                {% endif %}
+            {% else %}
+                <div class="dash-empty">No open threads.</div>
+            {% endif %}
+        </div>
+
+        {# Stale threads #}
+        <div class="dash-panel">
+            <div class="dash-panel-header">
+                <span class="dash-panel-title">Stale — No Activity 7+ Days</span>
+                {% if stale_threads %}
+                <span class="dash-panel-badge dash-panel-badge--warn">{{ stale_threads | length }}</span>
+                {% endif %}
+            </div>
+            {% if stale_threads %}
+            <table class="dash-table">
+                <tbody>
+                    {% for t in stale_threads %}
+                    <tr onclick="window.location='/threads/{{ t.id }}'">
+                        <td class="td-subject">{{ t.subject or '(no subject)' }}</td>
+                        <td class="td-muted" style="white-space:nowrap;">
+                            {% if t.updated_at %}
+                                {{ (now - t.updated_at).days }}d ago
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="dash-empty">✓ No stale threads.</div>
+            {% endif %}
+        </div>
+
+    </div>
+
+    {# ── Row 2: Recent activity ────────────────────────────────────────── #}
+    <div class="dash-panel">
+        <div class="dash-panel-header">
+            <span class="dash-panel-title">Recent Activity — Last 24 Hours</span>
+            {% if recent_threads %}
+            <span class="dash-panel-badge">{{ recent_threads | length }}</span>
+            {% endif %}
+        </div>
+        {% if recent_threads %}
+        <table class="dash-table">
+            <thead>
+                <tr>
+                    <th>Subject</th>
+                    <th>Status</th>
+                    <th>Assigned</th>
+                    <th>Last Activity</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in recent_threads %}
+                <tr onclick="window.location='/threads/{{ t.id }}'">
+                    <td class="td-subject">{{ t.subject or '(no subject)' }}</td>
+                    <td><span class="pill pill--{{ t.status.value }}">{{ t.status.value }}</span></td>
+                    <td class="td-muted">
+                        {% if t.assignee %}{{ t.assignee.display_name }}{% else %}—{% endif %}
+                    </td>
+                    <td class="td-muted" style="white-space:nowrap;">
+                        {% if t.updated_at %}
+                            {{ t.updated_at.strftime("%b %d, %I:%M %p") }}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="dash-empty">No activity in the last 24 hours.</div>
+        {% endif %}
+    </div>
+
+</div>
+
+<script>
+function toggleUserMenu(e) {
+    e.stopPropagation();
+    document.getElementById('nav-dropdown').classList.toggle('open');
+}
+document.addEventListener('click', () => {
+    const d = document.getElementById('nav-dropdown');
+    if (d) d.classList.remove('open');
+});
+</script>
+
+</body>
+</html>

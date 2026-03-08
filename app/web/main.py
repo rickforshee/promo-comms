@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 
-from app.web.routes import auth, threads, assignment, notes, links, po_lines, profile, admin, status, reply
+from app.web.routes import auth, threads, assignment, notes, links, po_lines, profile, admin, status, reply, dashboard
 
 BASE_DIR = Path(__file__).parent
 
@@ -26,6 +26,7 @@ app.include_router(profile.router)
 app.include_router(admin.router)
 app.include_router(status.router)
 app.include_router(reply.router)
+app.include_router(dashboard.router)
 
 
 @app.on_event("startup")
@@ -34,6 +35,7 @@ async def startup_event():
     load_status_maps()
     status.set_templates(templates)
     reply.set_templates(templates)
+    dashboard.set_templates(templates)
 
 
 @app.get("/")
