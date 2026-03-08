@@ -140,18 +140,21 @@ class PaceCacheService:
             "totalParts":        "job/@totalParts",
         }
 
-        return self._paginate_and_upsert(
-            object_type = "JobPart",
-            fields      = fields,
-            builder_fn  = lambda model: (
-                model
-                .filter("@jobProductType", "smPromo")
-                .filter("job/@adminStatus", "!=", "X")
-            ),
-            mapper      = self._map_job,
-            model       = PaceJobCache,
-            pk_field    = "job_number",
-        )
+        total = 0
+        for product_type in ("smPromo", "DOutsd01"):
+            total += self._paginate_and_upsert(
+                object_type = "JobPart",
+                fields      = fields,
+                builder_fn  = lambda model, pt=product_type: (
+                    model
+                    .filter("@jobProductType", pt)
+                    .filter("job/@adminStatus", "!=", "X")
+                ),
+                mapper      = self._map_job,
+                model       = PaceJobCache,
+                pk_field    = "job_number",
+            )
+        return total
 
     def refresh_purchase_orders(self) -> int:
         """
@@ -237,6 +240,53 @@ class PaceCacheService:
             pk_field    = "customer_id",
         )
     
+    def refresh_vendors(self) -> int:
+        """Refresh pace_vendor_cache via direct Pace DB query."""
+        from sqlalchemy import create_engine, text
+        from app import config
+
+        logger.info("Refreshing vendor cache (via direct Pace DB)...")
+        engine = create_engine(config.PACE_DB_URL)
+        with engine.connect() as conn:
+            rows = conn.execute(text("""
+                SELECT apmasterid, apname, apcontactfirstname, apcontactlastname,
+                       apcontacttitle, apemail, apfax, apaddress1, apcity,
+                       apactive, apcustomernumber, apdefaultcurrency
+                FROM vendor
+                WHERE apmasterid IS NOT NULL AND apmasterid != ''
+            """)).fetchall()
+
+        count = 0
+        for row in rows:
+            vid = str(row.apmasterid).strip() if row.apmasterid else None
+            if not vid:
+                continue
+            mapped = {
+                "vendor_id":          vid,
+                "company_name":       row.apname,
+                "contact_first_name": row.apcontactfirstname,
+                "contact_last_name":  row.apcontactlastname,
+                "contact_title":      row.apcontacttitle,
+                "email_address":      row.apemail,
+                "fax_number":         row.apfax,
+                "address1":           row.apaddress1,
+                "city":               row.apcity,
+                "active":             _safe_bool(row.apactive),
+                "customer_number":    row.apcustomernumber,
+                "default_currency":   row.apdefaultcurrency,
+            }
+            stmt = pg_insert(PaceVendorCache).values(**mapped)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["vendor_id"],
+                set_={k: stmt.excluded[k] for k in mapped if k != "vendor_id"},
+            )
+            self.db.execute(stmt)
+            count += 1
+
+        self.db.commit()
+        logger.info(f"Vendor cache refresh complete — {count} records")
+        return count
+
     def refresh_vendor_names(self) -> int:
         """
         Backfill company_name in pace_vendor_cache via direct Pace DB query.
