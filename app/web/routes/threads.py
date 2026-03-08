@@ -380,6 +380,18 @@ async def thread_search(
     })
 
 
+def _rewrite_cid_urls(html: str, attachments: list) -> str:
+    """Replace cid:filename@... references with local attachment URLs."""
+    if not html or not attachments:
+        return html
+    filename_to_id = {a.filename: a.id for a in attachments if a.filename}
+    import re
+    def replacer(m):
+        filename = m.group(1).split('@')[0]
+        att_id = filename_to_id.get(filename)
+        return f'src="/attachments/{att_id}/file"' if att_id else m.group(0)
+    return re.sub(r'src="cid:([^"]+)"', replacer, html)
+
 # ─── Thread detail ────────────────────────────────────────────────────────────
 
 @router.get("/threads/{thread_id}", response_class=HTMLResponse)
@@ -457,6 +469,11 @@ async def thread_detail(
 
     assigned_user = db.query(User).filter(User.id == thread.assigned_to).first() if thread.assigned_to else None
     all_users = db.query(User).filter(User.active == True).order_by(User.display_name).all()
+
+    # Rewrite cid: image references to local URLs
+    for email in emails:
+        if email.body_html and email.attachments:
+            email.body_html = _rewrite_cid_urls(email.body_html, email.attachments)
 
     return templates.TemplateResponse("threads/detail.html", {
         "request":       request,
