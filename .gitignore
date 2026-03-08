@@ -26,4 +26,4 @@ Thumbs.db
 
 # IDE
 .vscode/
-.idea/
+.idea/rebuild_tracking.py
