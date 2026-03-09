@@ -12,11 +12,34 @@
 <table class="thread-table">
     <thead>
         <tr>
-            <th>Subject</th>
-            <th>From</th>
-            <th>Latest</th>
-            <th>Status</th>
-            <th>Assigned</th>
+            {% set cols = [
+                ("subject",  "Subject"),
+                ("from",     "From"),
+                ("latest",   "Latest"),
+                ("status",   "Status"),
+                ("assigned", "Assigned"),
+            ] %}
+            {% for col_key, col_label in cols %}
+            {% set is_active = sort_by == col_key %}
+            {% set next_dir  = "asc" if (is_active and sort_dir == "desc") else "desc" %}
+            {% if col_key == "from" %}
+            <th>{{ col_label }}</th>
+            {% else %}
+            <th class="sortable-th {% if is_active %}sort-active{% endif %}"
+                hx-get="/threads/search"
+                hx-target="#thread-results"
+                hx-swap="innerHTML"
+                hx-include="#search-input, #link-filter, #status-filter, [name=date_from], [name=date_to]"
+                hx-vals='{"sort_by": "{{ col_key }}", "sort_dir": "{{ next_dir }}"}'>
+                {{ col_label }}
+                {% if is_active %}
+                <span class="sort-indicator">{{ "↑" if sort_dir == "asc" else "↓" }}</span>
+                {% else %}
+                <span class="sort-indicator sort-indicator-inactive">↕</span>
+                {% endif %}
+            </th>
+            {% endif %}
+            {% endfor %}
             <th>Links</th>
         </tr>
     </thead>
@@ -75,7 +98,7 @@
 </table>
 
 {% if total_pages is defined and total_pages > 1 %}
-{% set pager_base = "/threads/search?q=" + (query | urlencode) + "&link_filter=" + link_filter + "&status_filter=" + (status_filter or 'all') + "&date_from=" + (date_from or '') + "&date_to=" + (date_to or '') %}
+{% set pager_base = "/threads/search?q=" + (query | urlencode) + "&link_filter=" + link_filter + "&status_filter=" + (status_filter or 'all') + "&date_from=" + (date_from or '') + "&date_to=" + (date_to or '') + "&sort_by=" + (sort_by or 'latest') + "&sort_dir=" + (sort_dir or 'desc') %}
 <div class="pagination">
     {% if page > 1 %}
     <a class="btn-page"

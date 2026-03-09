@@ -997,3 +997,22 @@ a:hover { text-decoration: underline; }
 .btn-outline:hover { background: var(--accent-light); }
 
 .attach-indicator { font-size: 0.85rem; margin-left: 4px; opacity: 0.6; }
+
+/* ── Sortable column headers ─────────────────────────────────────────── */
+.sortable-th,
+.sortable-th * {
+    cursor: pointer;
+}
+.sortable-th:hover {
+    color: #2563eb;
+}
+.sort-active {
+    color: #2563eb;
+}
+.sort-indicator {
+    font-size: 11px;
+    margin-left: 3px;
+}
+.sort-indicator-inactive {
+    color: #9ca3af;
+}

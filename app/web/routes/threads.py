@@ -307,12 +307,42 @@ def _search_thread_ids(q: str, link_filter: str, db: Session, current_user_id: i
     return list(matched_ids)
 
 
+
+# ─── Sort helper ──────────────────────────────────────────────────────────────
+def _sort_thread_ids(thread_ids: list[int], sort_by: str, sort_dir: str, db: Session) -> list[int]:
+    """Return thread_ids sorted server-side by the requested column."""
+    if not thread_ids:
+        return []
+    asc = sort_dir == "asc"
+    if sort_by == "subject":
+        rows = db.query(Thread.id, Thread.subject).filter(Thread.id.in_(thread_ids)).all()
+        rows.sort(key=lambda r: (r.subject or "").lower(), reverse=not asc)
+    elif sort_by == "status":
+        rows = db.query(Thread.id, Thread.status).filter(Thread.id.in_(thread_ids)).all()
+        rows.sort(key=lambda r: r.status or "", reverse=not asc)
+    elif sort_by == "assigned":
+        rows = db.query(Thread.id, Thread.assigned_to).filter(Thread.id.in_(thread_ids)).all()
+        rows.sort(key=lambda r: r.assigned_to or 99999, reverse=not asc)
+    else:  # "latest" — sort by most recent email received_at
+        latest_subq = (
+            db.query(Email.thread_id, func.max(Email.received_at).label("max_received_at"))
+            .filter(Email.thread_id.in_(thread_ids))
+            .group_by(Email.thread_id)
+            .all()
+        )
+        latest_map = {r.thread_id: r.max_received_at for r in latest_subq}
+        rows = [(tid, latest_map.get(tid)) for tid in thread_ids]
+        rows.sort(key=lambda r: r[1] or __import__("datetime").datetime.min, reverse=not asc)
+    return [r[0] for r in rows]
+
 # ─── Thread list ──────────────────────────────────────────────────────────────
 
 @router.get("/threads", response_class=HTMLResponse)
 async def thread_list(
     request: Request,
     page: int = 1,
+    sort_by: str = "latest",
+    sort_dir: str = "desc",
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -340,6 +370,11 @@ async def thread_list(
         "total_pages":  (total + page_size - 1) // page_size,
         "query":        "",
         "link_filter":  "all",
+        "sort_by":      sort_by,
+        "sort_dir":     sort_dir,
+        "status_filter": "all",
+        "date_from":    "",
+        "date_to":      "",
     })
 
 
@@ -354,6 +389,8 @@ async def thread_search(
     date_from: str | None = None,
     date_to: str | None = None,
     page: int = 1,
+    sort_by: str = "latest",
+    sort_dir: str = "desc",
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -366,8 +403,9 @@ async def thread_search(
     if is_default:
         total = db.query(Thread).count()
         offset = (page - 1) * page_size
-        threads = db.query(Thread).order_by(Thread.id.desc()).offset(offset).limit(page_size).all()
-        thread_data = _enrich_threads([t.id for t in threads], db)
+        all_ids = [r.id for r in db.query(Thread.id).all()]
+        sorted_ids = _sort_thread_ids(all_ids, sort_by, sort_dir, db)
+        thread_data = _enrich_threads(sorted_ids[offset:offset + page_size], db)
     else:
         thread_ids = _search_thread_ids(
             q, link_filter, db,
@@ -378,7 +416,8 @@ async def thread_search(
         )
         total = len(thread_ids)
         offset = (page - 1) * page_size
-        thread_data = _enrich_threads(thread_ids[offset:offset + page_size], db)
+        sorted_ids = _sort_thread_ids(thread_ids, sort_by, sort_dir, db)
+        thread_data = _enrich_threads(sorted_ids[offset:offset + page_size], db)
 
     total_pages = (total + page_size - 1) // page_size
 
@@ -396,6 +435,8 @@ async def thread_search(
         "page_size":     page_size,
         "status_labels": STATUS_LABELS,
         "status_colors": STATUS_COLORS,
+        "sort_by":       sort_by,
+        "sort_dir":      sort_dir,
     })
 
 
