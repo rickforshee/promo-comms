@@ -12,10 +12,10 @@
 <body>
     {% if current_user is defined and current_user %}
     <nav class="navbar">
-        <div class="navbar-brand">
+        <a href="/dashboard" class="navbar-brand" style="text-decoration:none;">
     <img src="/static/img/vivid-logo-white.png" alt="Vivid Impact" style="height:30px; margin-right:10px; vertical-align:middle; opacity:0.95;">
     <span>Promo Command Center</span>
-</div>
+</a>
         <div class="navbar-links">
             <a href="/threads">Inbox</a>
             <a href="/dashboard">Dashboard</a>
