@@ -5,6 +5,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from app.database import Base
 import enum
+import uuid
 
 
 # ─── Enums ────────────────────────────────────────────────────────────────────
@@ -177,6 +178,8 @@ class Proof(Base):
     thread_id     = Column(Integer, ForeignKey("threads.id"), nullable=False)
     status        = Column(Enum(ProofStatus), nullable=False,
                            default=ProofStatus.received)
+    portal_token  = Column(String(64), unique=True, nullable=True,
+                           default=lambda: uuid.uuid4().hex)
     created_at    = Column(DateTime, server_default=func.now())
     updated_at    = Column(DateTime, server_default=func.now(),
                            onupdate=func.now())
@@ -193,7 +196,7 @@ class ProofHistory(Base):
     id         = Column(Integer, primary_key=True)
     proof_id   = Column(Integer, ForeignKey("proofs.id"), nullable=False)
     status     = Column(Enum(ProofStatus), nullable=False)
-    changed_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    changed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     changed_at = Column(DateTime, server_default=func.now())
     notes      = Column(Text)
 

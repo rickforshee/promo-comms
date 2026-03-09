@@ -1,0 +1,10 @@
+<div class="action-card" style="text-align:center; padding:40px;">
+  {% if status == 'approved' %}
+    <div style="font-size:48px; margin-bottom:16px;">✓</div>
+    <h3 style="color:#155724; font-size:20px; margin-bottom:8px;">Proof Approved!</h3>
+  {% else %}
+    <div style="font-size:48px; margin-bottom:16px;">✎</div>
+    <h3 style="color:#842029; font-size:20px; margin-bottom:8px;">Revisions Requested</h3>
+  {% endif %}
+  <p style="color:#555; font-size:15px;">{{ message }}</p>
+</div>

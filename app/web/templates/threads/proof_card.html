@@ -13,11 +13,20 @@
                 {{ proof.status.value | replace('_', ' ') | title }}
             </span>
         </div>
+        <div style="display:flex; gap:8px; align-items:center;">
         {% if attachment %}
         <a href="/attachments/{{ attachment.id }}/file" target="_blank" class="btn btn-sm btn-outline">
             ↗ Open File
         </a>
         {% endif %}
+        {% if proof.portal_token %}
+        <button class="btn btn-sm btn-outline"
+                onclick="copyPortalLink('{{ proof.portal_token }}')"
+                title="Copy client approval link">
+            🔗 Copy Portal Link
+        </button>
+        {% endif %}
+        </div>
     </div>
 
     {% if attachment %}
@@ -130,3 +139,14 @@
     {% endif %}
 
 </div>
+<script>
+function copyPortalLink(token) {
+    const url = window.location.origin + '/portal/proof/' + token;
+    navigator.clipboard.writeText(url).then(() => {
+        const btn = event.target;
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied!';
+        setTimeout(() => btn.textContent = orig, 2000);
+    });
+}
+</script>
