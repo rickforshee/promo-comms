@@ -36,7 +36,9 @@
             </td>
             <td class="thread-date">
                 {% if item.latest_email and item.latest_email.received_at %}
-                    {{ item.latest_email.received_at.strftime("%b %d, %Y") }}
+                    <span title="{{ item.latest_email.received_at.strftime('%b %d, %Y %-I:%M %p') }}">
+                        {{ item.latest_email.received_at | smart_date }}
+                    </span>
                 {% else %}—{% endif %}
             </td>
             <td>

@@ -18,6 +18,25 @@ from app.models import User
 router = APIRouter()
 templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates")
 
+def _smart_date(dt):
+    if dt is None:
+        return "—"
+    from datetime import datetime as _dt
+    now = _dt.now(dt.tzinfo) if dt.tzinfo else _dt.now()
+    delta = (now.date() - dt.date()).days
+    if delta == 0:
+        return dt.strftime("%-I:%M %p")
+    elif delta == 1:
+        return "Yesterday " + dt.strftime("%-I:%M %p")
+    elif delta < 7:
+        return dt.strftime("%a %-I:%M %p")
+    elif dt.year == now.year:
+        return dt.strftime("%b %d")
+    else:
+        return dt.strftime("%b %d, %Y")
+
+templates.env.filters["smart_date"] = _smart_date
+
 PACE_BASE    = "https://vicepace.vividimpact.com/epace/company:public/object"
 UPS_URL      = "https://www.ups.com/track?tracknum={}"
 FEDEX_URL    = "https://www.fedex.com/fedextrack/?tracknumbers={}"
