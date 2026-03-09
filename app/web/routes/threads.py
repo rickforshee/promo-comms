@@ -320,6 +320,22 @@ def _sort_thread_ids(thread_ids: list[int], sort_by: str, sort_dir: str, db: Ses
     elif sort_by == "status":
         rows = db.query(Thread.id, Thread.status).filter(Thread.id.in_(thread_ids)).all()
         rows.sort(key=lambda r: r.status or "", reverse=not asc)
+    elif sort_by == "from":
+        latest_subq = (
+            db.query(Email.thread_id, func.max(Email.received_at).label("max_received_at"))
+            .filter(Email.thread_id.in_(thread_ids))
+            .group_by(Email.thread_id)
+            .subquery()
+        )
+        from_rows = (
+            db.query(Email.thread_id, Email.sender_name, Email.sender_email)
+            .join(latest_subq, (Email.thread_id == latest_subq.c.thread_id) &
+                               (Email.received_at == latest_subq.c.max_received_at))
+            .all()
+        )
+        from_map = {r.thread_id: (r.sender_name or r.sender_email or "").lower() for r in from_rows}
+        rows = [(tid, from_map.get(tid, "")) for tid in thread_ids]
+        rows.sort(key=lambda r: r[1], reverse=not asc)
     elif sort_by == "assigned":
         rows = db.query(Thread.id, Thread.assigned_to).filter(Thread.id.in_(thread_ids)).all()
         rows.sort(key=lambda r: r.assigned_to or 99999, reverse=not asc)

@@ -22,7 +22,7 @@
             {% for col_key, col_label in cols %}
             {% set is_active = sort_by == col_key %}
             {% set next_dir  = "asc" if (is_active and sort_dir == "desc") else "desc" %}
-            {% if col_key == "from" %}
+            {% if False %}
             <th>{{ col_label }}</th>
             {% else %}
             <th class="sortable-th {% if is_active %}sort-active{% endif %}"
