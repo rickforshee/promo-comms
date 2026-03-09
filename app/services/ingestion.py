@@ -259,6 +259,19 @@ class IngestionService:
         att_id       = att_meta["id"]
         filename     = att_meta.get("name", "unknown")
         content_type = att_meta.get("contentType", "application/octet-stream")
+        # Graph API often returns octet-stream for images — fix by filename extension
+        if content_type == "application/octet-stream":
+            fname = att_meta.get("name", "").lower()
+            if fname.endswith((".jpg", ".jpeg")):
+                content_type = "image/jpeg"
+            elif fname.endswith(".png"):
+                content_type = "image/png"
+            elif fname.endswith(".gif"):
+                content_type = "image/gif"
+            elif fname.endswith(".webp"):
+                content_type = "image/webp"
+            elif fname.endswith(".pdf"):
+                content_type = "application/pdf"
         file_size    = att_meta.get("size", 0)
 
         # Fetch full attachment with content

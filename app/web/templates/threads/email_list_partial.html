@@ -47,13 +47,15 @@
             {% endif %}
         </div>
         {% set proof_types = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'] %}
+        {% set image_exts = ['.jpg', '.jpeg', '.png', '.gif', '.webp'] %}
+        {% set is_image_ext = att.filename and att.filename.lower()[-4:] in image_exts or att.filename and att.filename.lower()[-5:] in image_exts %}
         {% if email.attachments %}
         <div class="email-attachments">
             {% for att in email.attachments %}
             <div class="attachment-pill" id="att-pill-{{ att.id }}">
                 <span class="attachment-icon">
                     {% if att.content_type == 'application/pdf' %}📄
-                    {% elif att.content_type and att.content_type.startswith('image/') %}🖼
+                    {% elif (att.content_type and att.content_type.startswith('image/')) or is_image_ext %}🖼
                     {% else %}📎
                     {% endif %}
                 </span>
@@ -63,7 +65,7 @@
                 {% if att.file_size %}
                 <span class="attachment-size">{{ (att.file_size / 1024) | int }}KB</span>
                 {% endif %}
-                {% if att.content_type in proof_types %}
+                {% if att.content_type in proof_types or is_image_ext %}
                     {% if att.proof %}
                         <span class="proof-marked-badge">✓ Proof</span>
                     {% else %}
