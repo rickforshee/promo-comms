@@ -47,11 +47,10 @@
             {% endif %}
         </div>
         {% set proof_types = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'] %}
-        {% set image_exts = ['.jpg', '.jpeg', '.png', '.gif', '.webp'] %}
-        {% set is_image_ext = att.filename and att.filename.lower()[-4:] in image_exts or att.filename and att.filename.lower()[-5:] in image_exts %}
         {% if email.attachments %}
         <div class="email-attachments">
             {% for att in email.attachments %}
+            {% set is_image_ext = att.filename and (att.filename.lower().endswith('.jpg') or att.filename.lower().endswith('.jpeg') or att.filename.lower().endswith('.png') or att.filename.lower().endswith('.gif') or att.filename.lower().endswith('.webp')) %}
             <div class="attachment-pill" id="att-pill-{{ att.id }}">
                 <span class="attachment-icon">
                     {% if att.content_type == 'application/pdf' %}📄
