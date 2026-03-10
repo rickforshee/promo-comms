@@ -101,9 +101,10 @@ a:hover { text-decoration: underline; }
 .thread-table tbody tr:last-child { border-bottom: none; }
 .thread-table td { padding: 10px 16px; vertical-align: middle; }
 .thread-subject { font-weight: 500; max-width: 500px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.thread-from { color: #6b7280; white-space: nowrap; }
+.thread-from { color: #6b7280; max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .thread-date { color: #9ca3af; white-space: nowrap; font-size: 12px; }
 .thread-links { white-space: nowrap; }
+.thread-customer { max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ── Tags ──────────────────────────────────────────────────────────────────── */
 .tag {

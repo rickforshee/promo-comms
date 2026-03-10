@@ -47,7 +47,7 @@
     <tbody>
         {% for item in threads %}
         <tr class="thread-row" onclick="window.location='/threads/{{ item.thread.id }}'">
-            <td class="thread-customer">{{ item.customer_name or "—" }}</td>
+            <td class="thread-customer" title="{{ item.customer_name }}">{{ item.customer_name or "—" }}</td>
             <td class="thread-subject">
                 {{ item.thread.subject or "(no subject)" }}
                 {% if item.has_attachments %}
