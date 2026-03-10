@@ -287,6 +287,42 @@ def _search_thread_ids(q: str, link_filter: str, db: Session, current_user_id: i
             .distinct()
             .all()
         )
+        # Customer name
+        customer_ids = (
+            db.query(PaceCustomerCache.customer_id)
+            .filter(PaceCustomerCache.cust_name.ilike(pattern))
+            .all()
+        )
+        if customer_ids:
+            cid_list = [r.customer_id for r in customer_ids]
+            # Via job links
+            job_nums = (
+                db.query(PaceJobCache.job_number)
+                .filter(PaceJobCache.customer_id.in_(cid_list))
+                .all()
+            )
+            if job_nums:
+                jn_list = [r.job_number for r in job_nums]
+                matched_ids.update(
+                    r.thread_id for r in
+                    db.query(ThreadJobLink.thread_id)
+                    .filter(ThreadJobLink.job_number.in_(jn_list))
+                    .all()
+                )
+            # Via PO links
+            po_nums = (
+                db.query(PacePOCache.po_number)
+                .filter(PacePOCache.customer_id.in_(cid_list))
+                .all()
+            )
+            if po_nums:
+                pn_list = [r.po_number for r in po_nums]
+                matched_ids.update(
+                    r.thread_id for r in
+                    db.query(ThreadPOLink.thread_id)
+                    .filter(ThreadPOLink.po_number.in_(pn_list))
+                    .all()
+                )
         # Vendor name
         vendor_ids = (
             db.query(PaceVendorCache.vendor_id)
@@ -401,6 +437,41 @@ def _sort_thread_ids(thread_ids: list[int], sort_by: str, sort_dir: str, db: Ses
         )
         from_map = {r.thread_id: (r.sender_name or r.sender_email or "").lower() for r in from_rows}
         rows = [(tid, from_map.get(tid, "")) for tid in thread_ids]
+        rows.sort(key=lambda r: r[1], reverse=not asc)
+    elif sort_by == "customer":
+        # Resolve customer name via job link first, then PO link
+        job_links = (
+            db.query(ThreadJobLink.thread_id, PaceJobCache.customer_id)
+            .join(PaceJobCache, PaceJobCache.job_number == ThreadJobLink.job_number)
+            .filter(ThreadJobLink.thread_id.in_(thread_ids))
+            .all()
+        )
+        cust_id_map: dict[int, str] = {}
+        for tid, cid in job_links:
+            if tid not in cust_id_map and cid:
+                cust_id_map[tid] = cid
+
+        po_only = [tid for tid in thread_ids if tid not in cust_id_map]
+        if po_only:
+            po_links = (
+                db.query(ThreadPOLink.thread_id, PacePOCache.customer_id)
+                .join(PacePOCache, PacePOCache.po_number == ThreadPOLink.po_number)
+                .filter(ThreadPOLink.thread_id.in_(po_only))
+                .all()
+            )
+            for tid, cid in po_links:
+                if tid not in cust_id_map and cid:
+                    cust_id_map[tid] = cid
+
+        all_cust_ids = set(cust_id_map.values())
+        cust_name_map: dict[str, str] = {}
+        if all_cust_ids:
+            custs = db.query(PaceCustomerCache).filter(
+                PaceCustomerCache.customer_id.in_(all_cust_ids)
+            ).all()
+            cust_name_map = {c.customer_id: (c.cust_name or "").lower() for c in custs}
+
+        rows = [(tid, cust_name_map.get(cust_id_map.get(tid, ""), "")) for tid in thread_ids]
         rows.sort(key=lambda r: r[1], reverse=not asc)
     elif sort_by == "assigned":
         rows = db.query(Thread.id, Thread.assigned_to).filter(Thread.id.in_(thread_ids)).all()
