@@ -12,6 +12,7 @@
 <table class="thread-table">
     <thead>
         <tr>
+            <th>Customer</th>
             {% set cols = [
                 ("subject",  "Subject"),
                 ("from",     "From"),
@@ -40,13 +41,13 @@
             </th>
             {% endif %}
             {% endfor %}
-            <th>Customer</th>
-            <th>Links</th>
+<th>Links</th>
         </tr>
     </thead>
     <tbody>
         {% for item in threads %}
         <tr class="thread-row" onclick="window.location='/threads/{{ item.thread.id }}'">
+            <td class="thread-customer">{{ item.customer_name or "—" }}</td>
             <td class="thread-subject">
                 {{ item.thread.subject or "(no subject)" }}
                 {% if item.has_attachments %}
@@ -80,8 +81,7 @@
                 <span class="unassigned-dash">—</span>
                 {% endif %}
             </td>
-            <td class="thread-customer">{{ item.customer_name or "—" }}</td>
-            <td class="thread-links">
+<td class="thread-links">
                 {% if item.job_count %}
                 <span class="tag tag-job">{{ item.job_count }} job{% if item.job_count != 1 %}s{% endif %}</span>
                 {% endif %}

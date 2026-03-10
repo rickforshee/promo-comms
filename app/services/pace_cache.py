@@ -170,16 +170,28 @@ class PaceCacheService:
         with engine.connect() as conn:
             rows = conn.execute(text("""
                 SELECT
-                    pomasterid, poautoinc, apmasterid, armasterid,
-                    poorderstatus, poordertotal, podateentered,
-                    podateconfirmed, podatelastreceipt, buyer,
-                    poconfirmedby, ponotes, contactfirstname, contactlastname,
-                    lastmodified
-                FROM purchaseorder
-                WHERE podateentered >= '2025-04-01'
-                AND poorderstatus != 'X'
-                AND pomasterid IS NOT NULL
-                AND pomasterid != ''
+                    po.pomasterid, po.poautoinc, po.apmasterid, po.armasterid,
+                    po.poorderstatus, po.poordertotal, po.podateentered,
+                    po.podateconfirmed, po.podatelastreceipt, po.buyer,
+                    po.poconfirmedby, po.ponotes, po.contactfirstname, po.contactlastname,
+                    po.lastmodified,
+                    MIN(pol.ccmasterid) AS job_number,
+                    MIN(j.armasterid) AS customer_id
+                FROM purchaseorder po
+                LEFT JOIN purchaseorderline pol
+                    ON pol.pomasterid = po.pomasterid
+                    AND pol.ccmasterid IS NOT NULL
+                LEFT JOIN job j
+                    ON j.ccmasterid = pol.ccmasterid
+                WHERE po.podateentered >= '2025-04-01'
+                AND po.poorderstatus != 'X'
+                AND po.pomasterid IS NOT NULL
+                AND po.pomasterid != ''
+                GROUP BY po.pomasterid, po.poautoinc, po.apmasterid, po.armasterid,
+                    po.poorderstatus, po.poordertotal, po.podateentered,
+                    po.podateconfirmed, po.podatelastreceipt, po.buyer,
+                    po.poconfirmedby, po.ponotes, po.contactfirstname, po.contactlastname,
+                    po.lastmodified
             """)).fetchall()
 
         count = 0
@@ -200,6 +212,8 @@ class PaceCacheService:
                 "contact_first_name": row.contactfirstname,
                 "contact_last_name":  row.contactlastname,
                 "last_modified":      row.lastmodified,
+                "job_number":         row.job_number,
+                "customer_id":        row.customer_id,
             }
             if not mapped["po_number"]:
                 continue
@@ -429,12 +443,14 @@ class PaceCacheService:
         }
 
     @staticmethod
-    def _map_po(obj: dict[str, Any]) -> dict:
+    @staticmethod
+    def _map_po(obj: dict[str, Any], job_number: str | None = None) -> dict:
         return {
             "po_number":          obj.get("poNumber"),
             "pace_internal_id":   _safe_int(obj.get("primaryKey")),
             "vendor_id":          obj.get("vendor"),
             "customer_id":        obj.get("customer"),
+            "job_number":         job_number,
             "order_status":       obj.get("orderStatus"),
             "order_total":        _safe_decimal(obj.get("orderTotal")),
             "date_entered":       _safe_date(obj.get("dateEntered")),
@@ -445,7 +461,7 @@ class PaceCacheService:
             "notes":              obj.get("notes"),
             "contact_first_name": obj.get("firstName"),
             "contact_last_name":  obj.get("lastName"),
-    }
+        }
 
     @staticmethod
     def _map_vendor(obj: dict[str, Any]) -> dict:

@@ -268,6 +268,7 @@ class PacePOCache(Base):
     pace_internal_id   = Column(Integer)
     vendor_id          = Column(String(8))
     customer_id        = Column(String(8))
+    job_number         = Column(String(12))
     order_status       = Column(String(1))
     order_total        = Column(Numeric(12, 4))
     date_entered       = Column(Date)
