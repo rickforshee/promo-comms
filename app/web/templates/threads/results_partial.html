@@ -40,6 +40,7 @@
             </th>
             {% endif %}
             {% endfor %}
+            <th>Customer</th>
             <th>Links</th>
         </tr>
     </thead>
@@ -79,6 +80,7 @@
                 <span class="unassigned-dash">—</span>
                 {% endif %}
             </td>
+            <td class="thread-customer">{{ item.customer_name or "—" }}</td>
             <td class="thread-links">
                 {% if item.job_count %}
                 <span class="tag tag-job">{{ item.job_count }} job{% if item.job_count != 1 %}s{% endif %}</span>
@@ -92,7 +94,7 @@
             </td>
         </tr>
         {% else %}
-        <tr><td colspan="6" class="empty">No threads found.</td></tr>
+        <tr><td colspan="7" class="empty">No threads found.</td></tr>
         {% endfor %}
     </tbody>
 </table>

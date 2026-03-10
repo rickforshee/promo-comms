@@ -160,6 +160,71 @@ def _enrich_threads(thread_ids: list[int], db: Session) -> list[dict]:
         users = db.query(User).filter(User.id.in_(assigned_user_ids)).all()
         assigned_users = {u.id: u for u in users}
 
+    # Customer name — batch resolve, no N+1
+    # Priority: job link → PO link (via pace_po_cache.customer_id)
+
+    # Step 1: first job link per thread
+    first_job_links = (
+        db.query(ThreadJobLink)
+        .filter(ThreadJobLink.thread_id.in_(thread_ids))
+        .order_by(ThreadJobLink.thread_id, ThreadJobLink.job_number)
+        .all()
+    )
+    first_job_num_map: dict[int, str] = {}
+    for jl in first_job_links:
+        if jl.thread_id not in first_job_num_map:
+            first_job_num_map[jl.thread_id] = jl.job_number
+
+    job_num_to_cust_id: dict[str, str] = {}
+    if first_job_num_map:
+        _jobs = db.query(PaceJobCache).filter(
+            PaceJobCache.job_number.in_(first_job_num_map.values())
+        ).all()
+        job_num_to_cust_id = {j.job_number: j.customer_id for j in _jobs if j.customer_id}
+
+    # Step 2: for threads with no job link, try first PO link → pace_po_cache.customer_id
+    po_only_thread_ids = [tid for tid in thread_ids if tid not in first_job_num_map]
+    po_cust_id_map: dict[int, str] = {}
+    if po_only_thread_ids:
+        first_po_links = (
+            db.query(ThreadPOLink)
+            .filter(ThreadPOLink.thread_id.in_(po_only_thread_ids))
+            .order_by(ThreadPOLink.thread_id, ThreadPOLink.po_number)
+            .all()
+        )
+        first_po_num_map: dict[int, str] = {}
+        for pl in first_po_links:
+            if pl.thread_id not in first_po_num_map:
+                first_po_num_map[pl.thread_id] = pl.po_number
+
+        if first_po_num_map:
+            _pos = db.query(PacePOCache).filter(
+                PacePOCache.po_number.in_(first_po_num_map.values())
+            ).all()
+            po_num_to_cust_id = {p.po_number: p.customer_id for p in _pos if p.customer_id}
+            for tid, pnum in first_po_num_map.items():
+                cid = po_num_to_cust_id.get(pnum)
+                if cid:
+                    po_cust_id_map[tid] = cid
+
+    # Step 3: batch fetch all needed customer names in one query
+    all_cust_ids = set(job_num_to_cust_id.values()) | set(po_cust_id_map.values())
+    cust_id_to_name: dict[str, str] = {}
+    if all_cust_ids:
+        _custs = db.query(PaceCustomerCache).filter(
+            PaceCustomerCache.customer_id.in_(all_cust_ids)
+        ).all()
+        cust_id_to_name = {c.customer_id: c.cust_name for c in _custs if c.cust_name}
+
+    # Step 4: assemble per-thread customer name
+    thread_customer_map: dict[int, str] = {}
+    for tid in thread_ids:
+        if tid in first_job_num_map:
+            cid = job_num_to_cust_id.get(first_job_num_map[tid])
+        else:
+            cid = po_cust_id_map.get(tid)
+        thread_customer_map[tid] = cust_id_to_name.get(cid, "") if cid else ""
+
     return [
         {
             "thread":          t,
@@ -170,6 +235,7 @@ def _enrich_threads(thread_ids: list[int], db: Session) -> list[dict]:
             "assigned_user":   assigned_users.get(t.assigned_to),
             "status":          (getattr(t, "status", None).value if getattr(t, "status", None) else "open"),
             "has_attachments": t.id in attachment_thread_ids,
+            "customer_name":   thread_customer_map.get(t.id, ""),
         }
         for t in threads
     ]

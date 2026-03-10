@@ -155,14 +155,14 @@ def build_scheduler(run_historical: bool = True) -> BackgroundScheduler:
     # Historical import — runs every 2 minutes until backlog is exhausted
     if run_historical:
         scheduler.add_job(
-            job_pace_cache_refresh,
+            job_historical_import,
             trigger="interval",
-            minutes=PACE_CACHE_INTERVAL_MINUTES,
-            id="pace_cache_refresh",
-            name="Pace cache refresh",
+            minutes=2,
+            id="historical_import",
+            name="Historical email import",
             max_instances=1,
             coalesce=True,
-            # No next_run_time — first run after 30 minutes
+            next_run_time=datetime.now(timezone.utc),
         )
 
     # Pace cache refresh — every 30 minutes (placeholder)
