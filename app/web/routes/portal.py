@@ -6,21 +6,17 @@ import logging
 import os
 from fastapi import APIRouter, Request, Depends, Form, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 log = logging.getLogger(__name__)
 
+from app import config
 from app.database import SessionLocal
 from app.services.proof_notifications import notify_vivid_proof_decided
 from app.models import Proof, ProofHistory, ProofStatus, Attachment, Thread
 
 router = APIRouter()
 templates = None
-
-ATTACHMENTS_ROOT = os.path.join(
-    os.path.dirname(__file__), "..", "..", "..", "attachments"
-)
 
 
 def set_templates(t):
@@ -79,8 +75,7 @@ def portal_image(token: str, db: Session = Depends(get_db)):
     ).first()
     if not attachment or not attachment.storage_path:
         raise HTTPException(status_code=404)
-    path = os.path.join(ATTACHMENTS_ROOT, attachment.storage_path)
-    log.info("portal_image path: %s exists: %s", path, os.path.exists(path))
+    path = os.path.join(config.ATTACHMENT_STORAGE_PATH, attachment.storage_path)
     if not os.path.exists(path):
         raise HTTPException(status_code=404)
     return FileResponse(

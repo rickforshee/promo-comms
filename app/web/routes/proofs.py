@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
+from app import config
 from app.web.auth import get_current_user, get_db
 from app.models import Email, EmailDirection
 from app.services.proof_notifications import notify_client_proof_sent
@@ -14,9 +15,6 @@ from app.models import (
 
 router = APIRouter()
 templates = None
-
-# TODO: Move to object storage (S3/MinIO) before production.
-ATTACHMENTS_ROOT = os.path.join(os.path.dirname(__file__), "..", "..", "..", "attachments")
 
 
 def set_templates(t):
@@ -33,7 +31,7 @@ def serve_attachment(
     attachment = db.query(Attachment).filter(Attachment.id == attachment_id).first()
     if not attachment or not attachment.storage_path:
         raise HTTPException(status_code=404, detail="Attachment not found")
-    path = os.path.join(ATTACHMENTS_ROOT, attachment.storage_path)
+    path = os.path.join(config.ATTACHMENT_STORAGE_PATH, attachment.storage_path)
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="File not found on disk")
     return FileResponse(
