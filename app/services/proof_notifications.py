@@ -76,6 +76,7 @@ def notify_vivid_proof_decided(
 
     body = _proof_decided_body(thread, decision, client_name, notes)
     try:
+        log.info("notify_vivid_proof_decided: sending to message_id=%s cc=%s", last.message_id, cc)
         GraphClient().reply_to_message(
             message_id=last.message_id,
             comment=body,
