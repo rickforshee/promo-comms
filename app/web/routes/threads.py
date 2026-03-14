@@ -287,11 +287,16 @@ def _search_thread_ids(q: str, link_filter: str, db: Session, current_user_id: i
             .distinct()
             .all()
         )
-        # Email body text
+        # Email body (text or HTML)
         matched_ids.update(
             r.thread_id for r in
             db.query(Email.thread_id)
-            .filter(Email.body_text.ilike(pattern))
+            .filter(
+                or_(
+                    Email.body_text.ilike(pattern),
+                    Email.body_html.ilike(pattern),
+                )
+            )
             .filter(Email.thread_id.isnot(None))
             .distinct()
             .all()
