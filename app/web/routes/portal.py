@@ -12,7 +12,7 @@ from app.database import SessionLocal
 from app.services.proof_notifications import notify_vivid_proof_decided
 from app.models import Proof, ProofHistory, ProofStatus, Attachment, Thread
 
-router = APIRouter(prefix="/portal")
+router = APIRouter()
 templates = None
 
 ATTACHMENTS_ROOT = os.path.join(
