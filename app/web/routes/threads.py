@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app import config
 from app.models import (
-    Attachment,
+    Attachment, Note,
     Thread, Email, ThreadJobLink, ThreadPOLink, ThreadTrackingLink,
     PaceJobCache, PacePOCache, PaceVendorCache, PaceCustomerCache, LinkSource,
 )
@@ -284,6 +284,23 @@ def _search_thread_ids(q: str, link_filter: str, db: Session, current_user_id: i
                     Email.sender_email.ilike(pattern),
                 )
             )
+            .distinct()
+            .all()
+        )
+        # Email body text
+        matched_ids.update(
+            r.thread_id for r in
+            db.query(Email.thread_id)
+            .filter(Email.body_text.ilike(pattern))
+            .filter(Email.thread_id.isnot(None))
+            .distinct()
+            .all()
+        )
+        # Internal notes
+        matched_ids.update(
+            r.thread_id for r in
+            db.query(Note.thread_id)
+            .filter(Note.content.ilike(pattern))
             .distinct()
             .all()
         )
