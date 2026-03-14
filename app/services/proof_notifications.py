@@ -7,18 +7,12 @@ from app.services.graph_client import GraphClient
 log = logging.getLogger(__name__)
 
 
-def _is_safe_recipient(email: str) -> bool:
-    """Testing guard — only send to allowed domains."""
-    if not email or "@" not in email:
-        return False
-    domain = email.split("@")[-1].lower()
-    if domain not in config.ALLOWED_EMAIL_DOMAINS:
-        log.warning(
-            "SKIPPING notification to %s — not in ALLOWED_EMAIL_DOMAINS %s",
-            email, config.ALLOWED_EMAIL_DOMAINS,
-        )
-        return False
-    return True
+def _check_dry_run(email: str) -> bool:
+    """Return True if dry-run mode is active (caller should skip sending)."""
+    if config.DRY_RUN:
+        log.info("DRY RUN — would have sent to %s", email)
+        return True
+    return False
 
 
 def _last_inbound(thread_id: int, db):
@@ -41,7 +35,10 @@ def notify_client_proof_sent(proof, thread, db, override_email: str = None) -> N
         return
 
     to_email = (override_email or last.sender_email or "").strip()
-    if not _is_safe_recipient(to_email):
+    if not to_email or "@" not in to_email:
+        log.warning("notify_client_proof_sent: no valid recipient for proof %s", proof.id)
+        return
+    if _check_dry_run(to_email):
         return
 
     to_name = last.sender_name or ""
@@ -68,10 +65,13 @@ def notify_vivid_proof_decided(
         log.warning("notify_vivid_proof_decided: no inbound message on thread %s", thread.id)
         return
 
+    if _check_dry_run(last.sender_email or ""):
+        return
+
     cc = []
     if thread.assigned_to:
         assignee = db.query(User).filter(User.id == thread.assigned_to).first()
-        if assignee and assignee.email and _is_safe_recipient(assignee.email):
+        if assignee and assignee.email:
             cc = [{"address": assignee.email, "name": assignee.display_name or ""}]
 
     body = _proof_decided_body(thread, decision, client_name, notes)
