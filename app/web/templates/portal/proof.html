@@ -119,10 +119,10 @@
         </div>
         <iframe src="/proof/{{ token }}/image" style="width:100%;height:700px;border:1px solid #ddd;border-radius:4px;" title="Proof Document"></iframe>
       {% else %}
-        <img id="proof-img" src="/proof/{{ token }}/image" style="max-width:100%;"
-             onerror="document.getElementById('img-error').style.display='block'; document.getElementById('response-section').style.display='none';">
-        <div id="img-error" style="display:none;color:red;padding:12px;border:1px solid red;border-radius:4px;">
-          The proof image could not be loaded. Please contact Vivid Impact before approving.
+        <img id="proof-img" src="/proof/{{ token }}/image" style="max-width:100%;border-radius:4px;"
+             onerror="this.style.display='none'; document.getElementById('img-error').style.display='block'; document.getElementById('response-section').style.display='none';">
+        <div id="img-error" style="display:none;background:#fef2f2;border:1px solid #ef4444;border-radius:6px;padding:12px 16px;color:#991b1b;font-weight:bold;margin-top:8px;">
+          ⚠ The proof image could not be loaded. Please contact Vivid Impact before approving.
         </div>
       {% endif %}
 
