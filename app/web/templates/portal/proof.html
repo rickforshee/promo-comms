@@ -114,8 +114,10 @@
       </div>
 
       {% if attachment and attachment.content_type and 'pdf' in attachment.content_type %}
-        <p><a href="/proof/{{ token }}/image" target="_blank" class="btn btn-primary">📄 Open Proof PDF ↗</a></p>
-        <p style="color:#666;font-size:13px;">Please open and review the PDF before approving.</p>
+        <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;padding:12px 16px;margin-bottom:16px;font-weight:bold;color:#92400e;">
+          ⚠ Please review the proof below. Use the Approve or Request Revisions buttons at the bottom of this page to respond — do not use any forms within the document.
+        </div>
+        <iframe src="/proof/{{ token }}/image" style="width:100%;height:700px;border:1px solid #ddd;border-radius:4px;" title="Proof Document"></iframe>
       {% else %}
         <img id="proof-img" src="/proof/{{ token }}/image" style="max-width:100%;"
              onerror="document.getElementById('img-error').style.display='block'; document.getElementById('response-section').style.display='none';">
