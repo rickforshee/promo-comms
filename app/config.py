@@ -12,7 +12,9 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 AZURE_CLIENT_ID     = os.getenv("AZURE_CLIENT_ID")
 AZURE_TENANT_ID     = os.getenv("AZURE_TENANT_ID")
 AZURE_CLIENT_SECRET = os.getenv("AZURE_CLIENT_SECRET")
-SHARED_MAILBOX      = os.getenv("SHARED_MAILBOX")
+SHARED_MAILBOX         = os.getenv("SHARED_MAILBOX")
+BASE_URL               = os.getenv("BASE_URL", "http://dev1.vividimpact.com:8000")
+ALLOWED_EMAIL_DOMAINS  = set(os.getenv("ALLOWED_EMAIL_DOMAINS", "vividimpact.com").split(","))
 
 GRAPH_SCOPE         = ["https://graph.microsoft.com/.default"]
 GRAPH_BASE_URL      = "https://graph.microsoft.com/v1.0"

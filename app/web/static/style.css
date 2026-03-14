@@ -1017,3 +1017,8 @@ a:hover { text-decoration: underline; }
 .sort-indicator-inactive {
     color: #9ca3af;
 }
+
+/* Proof recipient field */
+.proof-recipient-row { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+.proof-recipient-label { font-size: 12px; color: var(--text-muted); white-space: nowrap; min-width: 70px; }
+.proof-recipient-input { flex: 1; font-size: 13px; padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text); }

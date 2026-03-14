@@ -5,6 +5,8 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.web.auth import get_current_user, get_db
+from app.models import Email, EmailDirection
+from app.services.proof_notifications import notify_client_proof_sent
 from app.models import (
     Attachment, AttachmentType, Proof, ProofHistory, ProofStatus,
     Thread, Email, User
@@ -104,10 +106,19 @@ def proofs_tab(
             .order_by(ProofHistory.changed_at.asc())
             .all()
         )
+        last_inbound = (
+            db.query(Email)
+            .filter(Email.thread_id == thread_id,
+                    Email.direction == EmailDirection.inbound)
+            .order_by(Email.received_at.desc())
+            .first()
+        )
+        client_email = (last_inbound.sender_email or "") if last_inbound else ""
         proof_data.append({
-            "proof":      proof,
-            "attachment": attachment,
-            "history":    history,
+            "proof":        proof,
+            "attachment":   attachment,
+            "history":      history,
+            "client_email": client_email,
         })
 
     return templates.TemplateResponse("threads/proofs_tab.html", {
@@ -138,6 +149,7 @@ def update_proof_status(
     proof_id: int,
     new_status: ProofStatus = Form(...),
     notes: str = Form(""),
+    override_email: str = Form(""),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -162,6 +174,13 @@ def update_proof_status(
     db.add(history)
     db.commit()
 
+    if new_status == ProofStatus.sent_for_approval:
+        _thread = db.query(Thread).filter(Thread.id == proof.thread_id).first()
+        notify_client_proof_sent(
+            proof, _thread, db,
+            override_email=override_email.strip() or None,
+        )
+
     attachment = db.query(Attachment).filter(Attachment.id == proof.attachment_id).first()
     history_rows = (
         db.query(ProofHistory, User)
@@ -172,14 +191,23 @@ def update_proof_status(
     )
     thread = db.query(Thread).filter(Thread.id == proof.thread_id).first()
 
+    _last = (
+        db.query(Email)
+        .filter(Email.thread_id == proof.thread_id,
+                Email.direction == EmailDirection.inbound)
+        .order_by(Email.received_at.desc())
+        .first()
+    )
+    _client_email = (_last.sender_email or "") if _last else ""
     return templates.TemplateResponse("threads/proof_card.html", {
         "request":      request,
         "current_user": current_user,
         "thread":       thread,
         "item": {
-            "proof":      proof,
-            "attachment": attachment,
-            "history":    history_rows,
+            "proof":        proof,
+            "attachment":   attachment,
+            "history":      history_rows,
+            "client_email": _client_email,
         },
         "ProofStatus":  ProofStatus,
     })

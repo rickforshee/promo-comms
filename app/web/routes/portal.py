@@ -9,6 +9,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
+from app.services.proof_notifications import notify_vivid_proof_decided
 from app.models import Proof, ProofHistory, ProofStatus, Attachment, Thread
 
 router = APIRouter(prefix="/portal")
@@ -113,6 +114,12 @@ def portal_approve(
     db.add(history)
     db.commit()
 
+    _thread = db.query(Thread).filter(Thread.id == proof.thread_id).first()
+    notify_vivid_proof_decided(
+        proof, _thread, "approved",
+        client_name=client_name.strip(), notes="", db=db,
+    )
+
     return templates.TemplateResponse("portal/proof_result.html", {
         "request": request,
         "status":  "approved",
@@ -146,6 +153,12 @@ def portal_revision(
     )
     db.add(history)
     db.commit()
+
+    _thread = db.query(Thread).filter(Thread.id == proof.thread_id).first()
+    notify_vivid_proof_decided(
+        proof, _thread, "revision requested",
+        client_name=client_name.strip(), notes=note, db=db,
+    )
 
     return templates.TemplateResponse("portal/proof_result.html", {
         "request": request,
