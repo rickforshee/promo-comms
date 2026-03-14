@@ -81,6 +81,8 @@
       cursor:pointer;
       border:none;
     }
+    .btn-primary  { background:#1a6eb5; color:#fff; text-decoration:none; display:inline-block; }
+    .btn-primary:hover { background:#155a96; }
     .btn-approve  { background:#198754; color:#fff; }
     .btn-approve:hover { background:#157347; }
     .btn-revision { background:#fff; color:#842029; border:2px solid #842029; }
@@ -111,9 +113,16 @@
         </span>
       </div>
 
-      <img class="proof-img"
-           src="/proof/{{ token }}/image"
-           alt="Proof image">
+      {% if attachment and attachment.content_type and 'pdf' in attachment.content_type %}
+        <p><a href="/proof/{{ token }}/image" target="_blank" class="btn btn-primary">📄 Open Proof PDF ↗</a></p>
+        <p style="color:#666;font-size:13px;">Please open and review the PDF before approving.</p>
+      {% else %}
+        <img id="proof-img" src="/proof/{{ token }}/image" style="max-width:100%;"
+             onerror="document.getElementById('img-error').style.display='block'; document.getElementById('response-section').style.display='none';">
+        <div id="img-error" style="display:none;color:red;padding:12px;border:1px solid red;border-radius:4px;">
+          The proof image could not be loaded. Please contact Vivid Impact before approving.
+        </div>
+      {% endif %}
 
       {% if history %}
       <div class="history">
@@ -146,6 +155,7 @@
     </div>
 
     {% else %}
+    <div id="response-section">
     <div class="action-card">
       <h3>Your Response</h3>
       <p>Please review the proof above and either approve it or request changes.</p>
@@ -170,6 +180,7 @@
       </div>
 
       <div id="result-msg" style="display:none; margin-top:20px;"></div>
+    </div>
     </div>
     {% endif %}
   </div>
