@@ -49,6 +49,27 @@
     </select>
 </div>
 
+<div class="filter-row">
+    <input type="text" id="sender-filter" name="sender_filter" class="filter-input"
+           placeholder="Filter by sender…"
+           value=""
+           hx-get="/threads/search"
+           hx-trigger="input changed delay:400ms, search"
+           hx-target="#thread-results"
+           hx-include="#search-form">
+    <select id="assigned-filter" name="assigned_filter" class="filter-select"
+            hx-get="/threads/search"
+            hx-trigger="change"
+            hx-target="#thread-results"
+            hx-include="#search-form">
+        <option value="all">Any assignee</option>
+        <option value="unassigned">Unassigned</option>
+        {% for u in users %}
+        <option value="{{ u.id }}">{{ u.display_name or u.email }}</option>
+        {% endfor %}
+    </select>
+</div>
+
 <div class="date-filter-bar">
     <label class="date-filter-label">From</label>
     <input type="date" name="date_from" class="date-input"

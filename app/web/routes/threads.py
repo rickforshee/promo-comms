@@ -247,7 +247,7 @@ def _tracking_url(carrier: str, number: str) -> str:
     return FEDEX_URL.format(number)
 
 
-def _search_thread_ids(q: str, link_filter: str, db: Session, current_user_id: int | None = None, date_from: date | None = None, date_to: date | None = None, status_filter: str = "all") -> list[int]:
+def _search_thread_ids(q: str, link_filter: str, db: Session, current_user_id: int | None = None, date_from: date | None = None, date_to: date | None = None, status_filter: str = "all", sender_filter: str = "", assigned_filter: str = "all") -> list[int]:
     matched_ids: set[int] = set()
     pattern = f"%{q}%"
 
@@ -428,6 +428,36 @@ def _search_thread_ids(q: str, link_filter: str, db: Session, current_user_id: i
 
         matched_ids = (matched_ids & filtered) if matched_ids else filtered
 
+    # Apply sender filter
+    if sender_filter and sender_filter.strip():
+        spat = f"%{sender_filter.strip()}%"
+        sender_ids = {
+            r.thread_id for r in
+            db.query(Email.thread_id)
+            .filter(
+                or_(
+                    Email.sender_name.ilike(spat),
+                    Email.sender_email.ilike(spat),
+                )
+            )
+            .filter(Email.thread_id.isnot(None))
+            .distinct()
+            .all()
+        }
+        matched_ids = (matched_ids & sender_ids) if matched_ids else sender_ids
+
+    # Apply assigned-to filter
+    if assigned_filter and assigned_filter != "all":
+        if assigned_filter == "unassigned":
+            assigned_ids = {r.id for r in db.query(Thread.id).filter(Thread.assigned_to.is_(None)).all()}
+        else:
+            try:
+                uid = int(assigned_filter)
+                assigned_ids = {r.id for r in db.query(Thread.id).filter(Thread.assigned_to == uid).all()}
+            except ValueError:
+                assigned_ids = set()
+        matched_ids = (matched_ids & assigned_ids) if matched_ids else assigned_ids
+
     return list(matched_ids)
 
 
@@ -535,21 +565,26 @@ async def thread_list(
 
     thread_data = _enrich_threads([t.id for t in threads], db)
 
+    users = db.query(User).filter(User.active == True).order_by(User.display_name).all()
+
     return templates.TemplateResponse("threads/list.html", {
-        "request":      request,
-        "current_user": current_user,
-        "threads":      thread_data,
-        "page":         page,
-        "total":        total,
-        "page_size":    page_size,
-        "total_pages":  (total + page_size - 1) // page_size,
-        "query":        "",
-        "link_filter":  "all",
-        "sort_by":      sort_by,
-        "sort_dir":     sort_dir,
-        "status_filter": "all",
-        "date_from":    "",
-        "date_to":      "",
+        "request":         request,
+        "current_user":    current_user,
+        "threads":         thread_data,
+        "page":            page,
+        "total":           total,
+        "page_size":       page_size,
+        "total_pages":     (total + page_size - 1) // page_size,
+        "query":           "",
+        "link_filter":     "all",
+        "sort_by":         sort_by,
+        "sort_dir":        sort_dir,
+        "status_filter":   "all",
+        "date_from":       "",
+        "date_to":         "",
+        "sender_filter":   "",
+        "assigned_filter": "all",
+        "users":           users,
     })
 
 
@@ -563,6 +598,8 @@ async def thread_search(
     status_filter: str = "all",
     date_from: str | None = None,
     date_to: str | None = None,
+    sender_filter: str = "",
+    assigned_filter: str = "all",
     page: int = 1,
     sort_by: str = "latest",
     sort_dir: str = "desc",
@@ -570,10 +607,15 @@ async def thread_search(
     current_user: User = Depends(get_current_user),
 ):
     q = q.strip()
+    sender_filter = sender_filter.strip()
     page_size = 50
     date_from_clean = date_from.strip() if date_from else ""
     date_to_clean = date_to.strip() if date_to else ""
-    is_default = not q and link_filter == "all" and status_filter == "all" and not date_from_clean and not date_to_clean
+    is_default = (
+        not q and link_filter == "all" and status_filter == "all"
+        and not date_from_clean and not date_to_clean
+        and not sender_filter and assigned_filter == "all"
+    )
 
     if is_default:
         total = db.query(Thread).count()
@@ -588,6 +630,8 @@ async def thread_search(
             date_from=_parse_date(date_from),
             date_to=_parse_date(date_to),
             status_filter=status_filter,
+            sender_filter=sender_filter,
+            assigned_filter=assigned_filter,
         )
         total = len(thread_ids)
         offset = (page - 1) * page_size
@@ -595,23 +639,27 @@ async def thread_search(
         thread_data = _enrich_threads(sorted_ids[offset:offset + page_size], db)
 
     total_pages = (total + page_size - 1) // page_size
+    users = db.query(User).filter(User.active == True).order_by(User.display_name).all()
 
     return templates.TemplateResponse("threads/results_partial.html", {
-        "request":       request,
-        "threads":       thread_data,
-        "total":         total,
-        "query":         q,
-        "link_filter":   link_filter,
-        "status_filter": status_filter,
-        "date_from":     date_from_clean,
-        "date_to":       date_to_clean,
-        "page":          page,
-        "total_pages":   total_pages,
-        "page_size":     page_size,
-        "status_labels": STATUS_LABELS,
-        "status_colors": STATUS_COLORS,
-        "sort_by":       sort_by,
-        "sort_dir":      sort_dir,
+        "request":         request,
+        "threads":         thread_data,
+        "total":           total,
+        "query":           q,
+        "link_filter":     link_filter,
+        "status_filter":   status_filter,
+        "date_from":       date_from_clean,
+        "date_to":         date_to_clean,
+        "sender_filter":   sender_filter,
+        "assigned_filter": assigned_filter,
+        "page":            page,
+        "total_pages":     total_pages,
+        "page_size":       page_size,
+        "status_labels":   STATUS_LABELS,
+        "status_colors":   STATUS_COLORS,
+        "sort_by":         sort_by,
+        "sort_dir":        sort_dir,
+        "users":           users,
     })
 
 

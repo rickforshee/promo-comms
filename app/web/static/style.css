@@ -1018,6 +1018,11 @@ a:hover { text-decoration: underline; }
     color: #9ca3af;
 }
 
+/* Sender / assignee filter row */
+.filter-row { display: flex; gap: 8px; padding: 0 12px 8px; flex-wrap: wrap; }
+.filter-input { flex: 1; min-width: 160px; padding: 6px 10px; font-size: 13px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); }
+.filter-input:focus { outline: none; border-color: var(--accent); }
+
 /* Proof recipient field */
 .proof-recipient-row { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
 .proof-recipient-label { font-size: 12px; color: var(--text-muted); white-space: nowrap; min-width: 70px; }
