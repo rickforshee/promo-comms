@@ -1099,13 +1099,20 @@ a:hover { text-decoration: underline; }
     /* Outbound email: remove desktop indent */
     .email-card--outbound { margin-left: 0; }
 
-    /* Report cards: 2-up grid instead of flex row */
-    .report-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .report-card { padding: 16px; min-width: 0; }
-    .report-card-value { font-size: 24px; }
+    /* Report cards: 3-column grid, one per card, reduce padding */
+    .report-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .report-card { padding: 12px 10px; min-width: 0; }
+    .report-card-value { font-size: 22px; }
+    .report-card-label { font-size: 10px; }
 
     /* Report sections: reduce padding */
-    .report-section { padding: 14px 14px; }
+    .report-section { padding: 14px; }
+
+    /* Daily volume: hide sparkline bar column on mobile */
+    .col-sparkline { display: none; }
+
+    /* Stale section header: stack threshold form below title */
+    .report-section-wide > div:first-child { flex-wrap: wrap; gap: 8px; }
 
     /* Forms: full-width date inputs */
     .date-input { flex: 1; min-width: 120px; }

@@ -50,7 +50,7 @@
                     <th style="text-align:right;">Inbound</th>
                     <th style="text-align:right;">Outbound</th>
                     <th style="text-align:right;">Total</th>
-                    <th style="width:160px;"></th>
+                    <th class="col-sparkline"></th>
                 </tr>
             </thead>
             <tbody>
@@ -67,7 +67,7 @@
                     <td style="text-align:right;">{{ counts.inbound }}</td>
                     <td style="text-align:right;">{{ counts.outbound }}</td>
                     <td style="text-align:right;font-weight:600;">{{ total }}</td>
-                    <td>
+                    <td class="col-sparkline">
                         <div style="display:flex;height:12px;border-radius:3px;overflow:hidden;background:#f3f4f6;">
                             <div style="width:{{ ((counts.inbound / max_val) * 100) | int }}%;background:#1a6eb5;"></div>
                             <div style="width:{{ ((counts.outbound / max_val) * 100) | int }}%;background:#198754;"></div>
