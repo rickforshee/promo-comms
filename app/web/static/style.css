@@ -1049,6 +1049,9 @@ a:hover { text-decoration: underline; }
 .report-table tr:last-child td { border-bottom:none; }
 .report-table tbody tr:hover { background:#f9fafb; }
 .report-empty { color:#9ca3af; font-size:13px; padding:12px 0; }
+.report-card-link { text-decoration:none; color:inherit; transition:box-shadow .15s, transform .1s; }
+.report-card-link:hover { box-shadow:0 4px 14px rgba(0,0,0,.12); transform:translateY(-1px); }
+.report-table tbody tr.report-row-link:hover { background:#f0f4ff; }
 
 /* Proof recipient field */
 .proof-recipient-row { display: flex; align-items: center; gap: 8px; margin: 8px 0; }

@@ -15,20 +15,22 @@
     <a href="/reports" class="btn-clear-dates" style="text-decoration:none;">Reset</a>
 </form>
 
+{% set base_url = "/threads/search?date_from=" ~ date_from ~ "&date_to=" ~ date_to %}
+
 <!-- Summary cards -->
 <div class="report-cards">
-    <div class="report-card">
+    <a href="{{ base_url }}" class="report-card report-card-link">
         <div class="report-card-label">Total Emails</div>
         <div class="report-card-value">{{ total_count | int }}</div>
-    </div>
-    <div class="report-card">
+    </a>
+    <a href="{{ base_url }}" class="report-card report-card-link">
         <div class="report-card-label">Inbound</div>
         <div class="report-card-value" style="color:#1a6eb5;">{{ inbound_count | int }}</div>
-    </div>
-    <div class="report-card">
+    </a>
+    <a href="{{ base_url }}" class="report-card report-card-link">
         <div class="report-card-label">Outbound</div>
         <div class="report-card-value" style="color:#198754;">{{ outbound_count | int }}</div>
-    </div>
+    </a>
 </div>
 
 <div class="report-grid">
@@ -48,8 +50,6 @@
                 </tr>
             </thead>
             <tbody>
-                {% set max_total = daily | map(attribute=1) | map(attribute='inbound') | list %}
-                {% set max_out   = daily | map(attribute=1) | map(attribute='outbound') | list %}
                 {% set all_totals = [] %}
                 {% for day, counts in daily %}
                     {% set _ = all_totals.append(counts.inbound + counts.outbound) %}
@@ -57,7 +57,8 @@
                 {% set max_val = all_totals | max if all_totals else 1 %}
                 {% for day, counts in daily %}
                 {% set total = counts.inbound + counts.outbound %}
-                <tr>
+                {% set day_url = "/threads/search?date_from=" ~ day ~ "&date_to=" ~ day %}
+                <tr class="report-row-link" onclick="window.location='{{ day_url }}';" style="cursor:pointer;">
                     <td style="white-space:nowrap;">{{ day }}</td>
                     <td style="text-align:right;">{{ counts.inbound }}</td>
                     <td style="text-align:right;">{{ counts.outbound }}</td>
@@ -87,7 +88,8 @@
             </thead>
             <tbody>
                 {% for row in by_user %}
-                <tr>
+                {% set user_url = base_url ~ "&assigned_filter=" ~ row.id %}
+                <tr class="report-row-link" onclick="window.location='{{ user_url }}';" style="cursor:pointer;">
                     <td>{{ row.display_name or row.email }}</td>
                     <td style="text-align:right;font-weight:600;">{{ row.cnt }}</td>
                 </tr>
@@ -109,7 +111,8 @@
             </thead>
             <tbody>
                 {% for row in by_vendor %}
-                <tr>
+                {% set vendor_url = base_url ~ "&q=" ~ row.company_name | urlencode %}
+                <tr class="report-row-link" onclick="window.location='{{ vendor_url }}';" style="cursor:pointer;">
                     <td>{{ row.company_name }}</td>
                     <td style="text-align:right;font-weight:600;">{{ row.cnt }}</td>
                 </tr>

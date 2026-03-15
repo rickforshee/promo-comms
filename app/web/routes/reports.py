@@ -60,7 +60,7 @@ def reports(
 
     # ── Volume by team member (outbound emails sent) ───────────────────────
     by_user_q = (
-        db.query(User.display_name, User.email, func.count(Email.id).label("cnt"))
+        db.query(User.id, User.display_name, User.email, func.count(Email.id).label("cnt"))
         .join(Email, Email.sender_email == User.email)
         .filter(Email.direction == EmailDirection.outbound)
     )
