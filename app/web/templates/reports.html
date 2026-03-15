@@ -16,6 +16,7 @@
 </form>
 
 {% set base_url = "/threads/search?date_from=" ~ date_from ~ "&date_to=" ~ date_to %}
+{% set export_base = "/reports/export.csv?date_from=" ~ date_from ~ "&date_to=" ~ date_to %}
 
 <!-- Summary cards -->
 <div class="report-cards">
@@ -37,7 +38,10 @@
 
     <!-- Daily volume -->
     <div class="report-section report-section-wide">
-        <h3 class="report-section-title">Daily Volume</h3>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <h3 class="report-section-title" style="margin-bottom:0;">Daily Volume</h3>
+            <a href="{{ export_base }}&section=daily" class="btn-clear-dates" style="text-decoration:none;">↓ Export CSV</a>
+        </div>
         {% if daily %}
         <table class="report-table">
             <thead>
@@ -80,7 +84,10 @@
 
     <!-- By team member -->
     <div class="report-section">
-        <h3 class="report-section-title">Outbound by Team Member</h3>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <h3 class="report-section-title" style="margin-bottom:0;">Outbound by Team Member</h3>
+            <a href="{{ export_base }}&section=users" class="btn-clear-dates" style="text-decoration:none;">↓ Export CSV</a>
+        </div>
         {% if by_user %}
         <table class="report-table">
             <thead>
@@ -103,7 +110,10 @@
 
     <!-- By vendor -->
     <div class="report-section">
-        <h3 class="report-section-title">Volume by Vendor (top 20)</h3>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <h3 class="report-section-title" style="margin-bottom:0;">Volume by Vendor (top 20)</h3>
+            <a href="{{ export_base }}&section=vendors" class="btn-clear-dates" style="text-decoration:none;">↓ Export CSV</a>
+        </div>
         {% if by_vendor %}
         <table class="report-table">
             <thead>
@@ -130,15 +140,18 @@
 <div class="report-section report-section-wide" style="margin-top:24px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
         <h3 class="report-section-title" style="margin-bottom:0;">Stale Open/Pending Threads</h3>
-        <form method="get" action="/reports" style="display:flex;align-items:center;gap:8px;margin:0;">
-            <input type="hidden" name="date_from" value="{{ date_from }}">
-            <input type="hidden" name="date_to" value="{{ date_to }}">
-            <label style="font-size:13px;font-weight:600;color:#6b7280;">No activity for</label>
-            <input type="number" name="stale_days" value="{{ stale_days }}" min="1" max="365"
-                   style="width:64px;" class="date-input">
-            <label style="font-size:13px;font-weight:600;color:#6b7280;">days</label>
-            <button type="submit" class="btn btn-primary btn-sm">Apply</button>
-        </form>
+        <div style="display:flex;align-items:center;gap:12px;">
+            <form method="get" action="/reports" style="display:flex;align-items:center;gap:8px;margin:0;">
+                <input type="hidden" name="date_from" value="{{ date_from }}">
+                <input type="hidden" name="date_to" value="{{ date_to }}">
+                <label style="font-size:13px;font-weight:600;color:#6b7280;">No activity for</label>
+                <input type="number" name="stale_days" value="{{ stale_days }}" min="1" max="365"
+                       style="width:64px;" class="date-input">
+                <label style="font-size:13px;font-weight:600;color:#6b7280;">days</label>
+                <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+            </form>
+            <a href="{{ export_base }}&section=stale&stale_days={{ stale_days }}" class="btn-clear-dates" style="text-decoration:none;">↓ Export CSV</a>
+        </div>
     </div>
     {% if stale_threads %}
     <table class="report-table">

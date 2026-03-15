@@ -93,6 +93,28 @@
 </div>
 </form>
 
+<div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+    <a id="export-csv-link" href="/threads/export.csv" class="btn-clear-dates" style="text-decoration:none;">
+        ↓ Export CSV
+    </a>
+</div>
+<script>
+(function () {
+    function updateExportLink() {
+        var form = document.getElementById('search-form');
+        if (!form) return;
+        var params = new URLSearchParams();
+        form.querySelectorAll('input, select').forEach(function (el) {
+            if (el.name && el.value) params.set(el.name, el.value);
+        });
+        document.getElementById('export-csv-link').href = '/threads/export.csv?' + params.toString();
+    }
+    updateExportLink();
+    document.getElementById('search-form').addEventListener('change', updateExportLink);
+    document.getElementById('search-form').addEventListener('input', updateExportLink);
+})();
+</script>
+
 <div id="thread-results">
     {% include "threads/results_partial.html" %}
 </div>

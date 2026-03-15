@@ -668,6 +668,68 @@ async def thread_search(
     return templates.TemplateResponse(template, ctx)
 
 
+# ─── Search CSV export ────────────────────────────────────────────────────────
+
+@router.get("/threads/export.csv")
+async def thread_search_export(
+    request: Request,
+    q: str = "",
+    link_filter: str = "all",
+    status_filter: str = "all",
+    date_from: str | None = None,
+    date_to: str | None = None,
+    sender_filter: str = "",
+    assigned_filter: str = "all",
+    sort_by: str = "latest",
+    sort_dir: str = "desc",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    import csv
+    import io
+    from fastapi.responses import StreamingResponse
+
+    q = q.strip()
+    sender_filter = sender_filter.strip()
+
+    thread_ids = _search_thread_ids(
+        q, link_filter, db,
+        current_user_id=current_user.id,
+        date_from=_parse_date(date_from),
+        date_to=_parse_date(date_to),
+        status_filter=status_filter,
+        sender_filter=sender_filter,
+        assigned_filter=assigned_filter,
+    )
+    sorted_ids = _sort_thread_ids(thread_ids, sort_by, sort_dir, db)
+    threads = _enrich_threads(sorted_ids, db)
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["Customer", "Subject", "Sender", "Status", "Assigned To",
+                     "Latest Activity", "Jobs", "POs", "Tracking"])
+    for item in threads:
+        latest = item["latest_email"]
+        writer.writerow([
+            item["customer_name"] or "",
+            item["thread"].subject or "",
+            (latest.sender_name or latest.sender_email or "") if latest else "",
+            item["status"],
+            item["assigned_user"].display_name if item["assigned_user"] else "",
+            latest.received_at.strftime("%Y-%m-%d %H:%M") if latest and latest.received_at else "",
+            item["job_count"],
+            item["po_count"],
+            item["tracking_count"],
+        ])
+
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="threads.csv"'},
+    )
+
+
 def _rewrite_cid_urls(html: str, attachments: list) -> str:
     """Replace cid:filename@... references with local attachment URLs."""
     if not html or not attachments:

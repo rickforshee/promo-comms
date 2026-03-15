@@ -1,6 +1,8 @@
+import csv
+import io
 from datetime import datetime, timedelta, date
 from fastapi import APIRouter, Request, Depends
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -200,3 +202,151 @@ def reports(
         "stale_threads":  stale_threads,
         "stale_days":     stale_days,
     })
+
+
+# ─── CSV exports ──────────────────────────────────────────────────────────────
+
+@router.get("/reports/export.csv")
+def reports_export(
+    request: Request,
+    section: str = "daily",
+    date_from: str | None = None,
+    date_to: str | None = None,
+    stale_days: int = 7,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    df = _parse_date(date_from)
+    dt = _parse_date(date_to)
+    df_dt = datetime(df.year, df.month, df.day) if df else None
+    dt_dt = datetime(dt.year, dt.month, dt.day, 23, 59, 59) if dt else None
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+
+    if section == "daily":
+        daily_q = (
+            db.query(
+                func.date_trunc("day", Email.received_at).label("day"),
+                Email.direction,
+                func.count(Email.id).label("cnt"),
+            )
+            .group_by("day", Email.direction)
+            .order_by("day")
+        )
+        if df_dt:
+            daily_q = daily_q.filter(Email.received_at >= df_dt)
+        if dt_dt:
+            daily_q = daily_q.filter(Email.received_at <= dt_dt)
+        daily: dict[str, dict] = {}
+        for row in daily_q.all():
+            key = row.day.strftime("%Y-%m-%d") if row.day else "unknown"
+            if key not in daily:
+                daily[key] = {"inbound": 0, "outbound": 0}
+            daily[key][row.direction.value] += row.cnt
+        writer.writerow(["Date", "Inbound", "Outbound", "Total"])
+        for day, counts in sorted(daily.items()):
+            writer.writerow([day, counts["inbound"], counts["outbound"],
+                             counts["inbound"] + counts["outbound"]])
+        filename = "daily_volume.csv"
+
+    elif section == "users":
+        by_user_q = (
+            db.query(User.display_name, User.email, func.count(Email.id).label("cnt"))
+            .join(Email, (Email.sender_email == User.email) |
+                         (Email.sender_name == User.display_name))
+            .filter(Email.direction == EmailDirection.outbound)
+        )
+        if df_dt:
+            by_user_q = by_user_q.filter(Email.received_at >= df_dt)
+        if dt_dt:
+            by_user_q = by_user_q.filter(Email.received_at <= dt_dt)
+        rows = by_user_q.group_by(User.display_name, User.email).order_by(func.count(Email.id).desc()).all()
+        writer.writerow(["Name", "Email", "Outbound Emails"])
+        for row in rows:
+            writer.writerow([row.display_name or "", row.email or "", row.cnt])
+        filename = "outbound_by_user.csv"
+
+    elif section == "vendors":
+        vendor_q = (
+            db.query(PaceVendorCache.company_name, func.count(Email.id).label("cnt"))
+            .join(Thread, Thread.id == Email.thread_id)
+            .join(ThreadPOLink, ThreadPOLink.thread_id == Thread.id)
+            .join(PacePOCache, PacePOCache.po_number == ThreadPOLink.po_number)
+            .join(PaceVendorCache, PaceVendorCache.vendor_id == PacePOCache.vendor_id)
+            .filter(PaceVendorCache.company_name.isnot(None))
+        )
+        if df_dt:
+            vendor_q = vendor_q.filter(Email.received_at >= df_dt)
+        if dt_dt:
+            vendor_q = vendor_q.filter(Email.received_at <= dt_dt)
+        rows = vendor_q.group_by(PaceVendorCache.vendor_id, PaceVendorCache.company_name).order_by(func.count(Email.id).desc()).all()
+        writer.writerow(["Vendor", "Emails"])
+        for row in rows:
+            writer.writerow([row.company_name or "", row.cnt])
+        filename = "volume_by_vendor.csv"
+
+    else:  # stale
+        stale_days = max(1, stale_days)
+        stale_cutoff = datetime.utcnow() - timedelta(days=stale_days)
+        stale_raw = (
+            db.query(Thread, User)
+            .outerjoin(User, User.id == Thread.assigned_to)
+            .filter(Thread.status.in_([ThreadStatus.open, ThreadStatus.pending]))
+            .filter(Thread.updated_at < stale_cutoff)
+            .order_by(Thread.updated_at.asc())
+            .all()
+        )
+        # Batch-resolve customer names
+        stale_thread_ids = [t.id for t, _ in stale_raw]
+        stale_customer_map: dict[int, str] = {}
+        if stale_thread_ids:
+            job_links = (
+                db.query(ThreadJobLink.thread_id, PaceJobCache.customer_id)
+                .join(PaceJobCache, PaceJobCache.job_number == ThreadJobLink.job_number)
+                .filter(ThreadJobLink.thread_id.in_(stale_thread_ids))
+                .all()
+            )
+            cust_id_map: dict[int, str] = {}
+            for tid, cid in job_links:
+                if tid not in cust_id_map and cid:
+                    cust_id_map[tid] = cid
+            po_only = [tid for tid in stale_thread_ids if tid not in cust_id_map]
+            if po_only:
+                po_links = (
+                    db.query(ThreadPOLink.thread_id, PacePOCache.customer_id)
+                    .join(PacePOCache, PacePOCache.po_number == ThreadPOLink.po_number)
+                    .filter(ThreadPOLink.thread_id.in_(po_only))
+                    .all()
+                )
+                for tid, cid in po_links:
+                    if tid not in cust_id_map and cid:
+                        cust_id_map[tid] = cid
+            all_cust_ids = set(cust_id_map.values())
+            if all_cust_ids:
+                custs = db.query(PaceCustomerCache).filter(PaceCustomerCache.customer_id.in_(all_cust_ids)).all()
+                cust_name_map = {c.customer_id: c.cust_name for c in custs if c.cust_name}
+                for tid, cid in cust_id_map.items():
+                    stale_customer_map[tid] = cust_name_map.get(cid, "")
+
+        now = datetime.utcnow()
+        writer.writerow(["Customer", "Subject", "Status", "Assigned To", "Days Stale", "Last Activity"])
+        for t, u in stale_raw:
+            days = (now - t.updated_at).days if t.updated_at else ""
+            last_activity = t.updated_at.strftime("%Y-%m-%d") if t.updated_at else ""
+            writer.writerow([
+                stale_customer_map.get(t.id, ""),
+                t.subject or "",
+                t.status.value,
+                u.display_name if u else "",
+                days,
+                last_activity,
+            ])
+        filename = "stale_threads.csv"
+
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
