@@ -186,7 +186,7 @@ async def send_reply(
         message_id=f"outbound-{thread_id}-{int(datetime.now(timezone.utc).timestamp())}",
         thread_id=thread_id,
         direction="outbound",
-        sender_email=None,           # sent from the shared mailbox
+        sender_email=current_user.email,
         sender_name=current_user.display_name or current_user.email,
         recipient_emails=all_recipients,
         subject=subject,
