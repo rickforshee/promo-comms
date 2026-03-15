@@ -129,6 +129,16 @@
     .dash-empty { padding: 24px 18px; color: var(--text-muted); font-size: 0.855rem; text-align: center; }
 
     /* ── Alert strip ────────────────────────────────────────────────── */
+    /* ── Responsive ─────────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+        .dash-grid, .dash-grid--wide { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+        .stat-grid { grid-template-columns: 1fr 1fr; }
+        .dash-page { padding: 0; }
+        .stat-card { padding: 14px; }
+        .stat-value { font-size: 1.5rem; }
+    }
     .dash-alert {
         display: flex; align-items: center; gap: 10px;
         background: #fef3c7; border: 1px solid #fcd34d;

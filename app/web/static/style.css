@@ -1054,6 +1054,70 @@ a:hover { text-decoration: underline; }
 .report-card-link:hover { box-shadow:0 4px 14px rgba(0,0,0,.12); transform:translateY(-1px); }
 .report-table tbody tr.report-row-link:hover { background:#f0f4ff; }
 
+/* ── Responsive — Tablet (≤ 900px) ────────────────────────────────────────── */
+@media (max-width: 900px) {
+    /* Detail layout: stack side panel below email thread */
+    .detail-layout { grid-template-columns: 1fr; }
+    .thread-tabs-wrap { height: auto; max-height: none; overflow: visible; }
+    .tab-content.active { overflow: visible; }
+    #email-list-wrap { overflow: visible; }
+
+    /* Report grid: single column */
+    .report-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Responsive — Mobile (≤ 640px) ────────────────────────────────────────── */
+@media (max-width: 640px) {
+    /* Navbar: hide brand text and user display name to save space */
+    .navbar { padding: 0 12px; height: 48px; }
+    .navbar-brand span { display: none; }
+    .navbar-links { gap: 10px; }
+    .navbar-links a { font-size: 12px; }
+    .nav-user-name { display: none; }
+
+    /* Container */
+    .container { padding: 12px; }
+
+    /* Thread table: hide low-priority columns on mobile.
+       Kept: Subject (2), Latest (4), Status (5).
+       Hidden: Customer (1), From (3), Assigned (6), Links (7). */
+    .thread-table th:nth-child(1),
+    .thread-table td:nth-child(1),
+    .thread-table th:nth-child(3),
+    .thread-table td:nth-child(3),
+    .thread-table th:nth-child(6),
+    .thread-table td:nth-child(6),
+    .thread-table th:nth-child(7),
+    .thread-table td:nth-child(7) { display: none; }
+    .thread-subject { max-width: none; white-space: normal; }
+
+    /* Search filters: wrap onto multiple lines */
+    .search-bar { flex-wrap: wrap; }
+    .filter-select { flex: 1; min-width: 120px; }
+    .date-filter-bar { flex-wrap: wrap; }
+
+    /* Outbound email: remove desktop indent */
+    .email-card--outbound { margin-left: 0; }
+
+    /* Report cards: 2-up grid instead of flex row */
+    .report-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .report-card { padding: 16px; min-width: 0; }
+    .report-card-value { font-size: 24px; }
+
+    /* Report sections: reduce padding */
+    .report-section { padding: 14px 14px; }
+
+    /* Forms: full-width date inputs */
+    .date-input { flex: 1; min-width: 120px; }
+
+    /* Page header */
+    .page-header h2 { font-size: 18px; }
+
+    /* Btn primary: override full-width default only in filter contexts */
+    .search-bar .btn-primary,
+    .date-filter-bar .btn-primary { width: auto; }
+}
+
 /* Proof recipient field */
 .proof-recipient-row { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
 .proof-recipient-label { font-size: 12px; color: var(--text-muted); white-space: nowrap; min-width: 70px; }
