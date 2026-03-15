@@ -1055,7 +1055,6 @@ a:hover { text-decoration: underline; }
 .report-grid { display:grid; grid-template-columns:1fr; gap:20px; }
 .report-section-wide { grid-column:1 / -1; }
 .report-section { background:#fff; border-radius:10px; box-shadow:0 1px 6px rgba(0,0,0,.07); padding:20px 24px; }
-.report-section-title { font-size:14px; font-weight:700; color:#1a1a2e; margin-bottom:14px; text-transform:uppercase; letter-spacing:.4px; }
 .report-table { width:100%; border-collapse:collapse; font-size:13px; }
 .report-table th { text-align:left; font-weight:600; color:#6b7280; font-size:11px; text-transform:uppercase; letter-spacing:.4px; padding:6px 8px; border-bottom:2px solid #f3f4f6; }
 .report-table td { padding:7px 8px; border-bottom:1px solid #f9fafb; color:#374151; }
@@ -1066,6 +1065,15 @@ a:hover { text-decoration: underline; }
 .report-card-link:hover { box-shadow:0 4px 14px rgba(0,0,0,.12); transform:translateY(-1px); }
 .report-table tbody tr.report-row-link:hover { background:#f0f4ff; }
 .col-sparkline { display: none; }
+.col-vol-detail { display: none; }
+.col-stale-detail { display: none; }
+
+.reports-filter-form { display:flex; flex-direction:column; gap:8px; margin-bottom:20px; }
+.reports-filter-dates { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.reports-filter-actions { display:flex; align-items:center; gap:8px; }
+.report-section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:8px; }
+.report-section-title { font-size:14px; font-weight:700; color:#1a1a2e; text-transform:uppercase; letter-spacing:.4px; }
+.stale-filter-form { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:0; }
 
 /* ── Responsive — Tablet+ (≥ 641px) ──────────────────────────────────────── */
 @media (min-width: 641px) {
@@ -1095,6 +1103,9 @@ a:hover { text-decoration: underline; }
     .thread-subject { max-width: 500px; white-space: nowrap; }
 
     .col-sparkline { display: table-cell; }
+    .col-vol-detail { display: table-cell; }
+    .col-stale-detail { display: table-cell; }
+    .reports-filter-form { flex-direction:row; align-items:center; flex-wrap:wrap; }
 }
 
 /* ── Responsive — Desktop (≥ 901px) ───────────────────────────────────────── */
