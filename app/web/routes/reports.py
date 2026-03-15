@@ -7,8 +7,9 @@ from sqlalchemy import func
 
 from app.web.auth import get_current_user, get_db
 from app.models import (
-    Email, EmailDirection, Thread, User,
-    ThreadPOLink, PacePOCache, PaceVendorCache,
+    Email, EmailDirection, Thread, ThreadStatus, User,
+    ThreadJobLink, ThreadPOLink, PacePOCache, PaceVendorCache,
+    PaceJobCache, PaceCustomerCache,
 )
 
 router = APIRouter()
@@ -32,6 +33,7 @@ def reports(
     request: Request,
     date_from: str | None = None,
     date_to: str | None = None,
+    stale_days: int = 7,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -77,7 +79,6 @@ def reports(
     )
 
     # ── Volume by vendor (via PO links) ───────────────────────────────────
-    # Join emails → threads → PO links → PO cache → vendor cache
     vendor_q = (
         db.query(PaceVendorCache.company_name, func.count(Email.id).label("cnt"))
         .join(Thread, Thread.id == Email.thread_id)
@@ -122,6 +123,69 @@ def reports(
         daily[key][row.direction.value] += row.cnt
     daily_sorted = sorted(daily.items())
 
+    # ── Stale threads ──────────────────────────────────────────────────────
+    stale_days = max(1, stale_days)
+    stale_cutoff = datetime.utcnow() - timedelta(days=stale_days)
+    stale_raw = (
+        db.query(Thread, User)
+        .outerjoin(User, User.id == Thread.assigned_to)
+        .filter(Thread.status.in_([ThreadStatus.open, ThreadStatus.pending]))
+        .filter(Thread.updated_at < stale_cutoff)
+        .order_by(Thread.updated_at.asc())
+        .all()
+    )
+
+    # Batch-resolve customer names for stale threads
+    stale_thread_ids = [t.id for t, _ in stale_raw]
+    stale_customer_map: dict[int, str] = {}
+    if stale_thread_ids:
+        # Job links first
+        job_links = (
+            db.query(ThreadJobLink.thread_id, PaceJobCache.customer_id)
+            .join(PaceJobCache, PaceJobCache.job_number == ThreadJobLink.job_number)
+            .filter(ThreadJobLink.thread_id.in_(stale_thread_ids))
+            .all()
+        )
+        cust_id_map: dict[int, str] = {}
+        for tid, cid in job_links:
+            if tid not in cust_id_map and cid:
+                cust_id_map[tid] = cid
+
+        # PO links for threads with no job link
+        po_only = [tid for tid in stale_thread_ids if tid not in cust_id_map]
+        if po_only:
+            po_links = (
+                db.query(ThreadPOLink.thread_id, PacePOCache.customer_id)
+                .join(PacePOCache, PacePOCache.po_number == ThreadPOLink.po_number)
+                .filter(ThreadPOLink.thread_id.in_(po_only))
+                .all()
+            )
+            for tid, cid in po_links:
+                if tid not in cust_id_map and cid:
+                    cust_id_map[tid] = cid
+
+        all_cust_ids = set(cust_id_map.values())
+        if all_cust_ids:
+            custs = (
+                db.query(PaceCustomerCache)
+                .filter(PaceCustomerCache.customer_id.in_(all_cust_ids))
+                .all()
+            )
+            cust_name_map = {c.customer_id: c.cust_name for c in custs if c.cust_name}
+            for tid, cid in cust_id_map.items():
+                stale_customer_map[tid] = cust_name_map.get(cid, "")
+
+    now = datetime.utcnow()
+    stale_threads = [
+        {
+            "thread":        t,
+            "assigned_user": u,
+            "customer_name": stale_customer_map.get(t.id, ""),
+            "days_stale":    (now - t.updated_at).days if t.updated_at else None,
+        }
+        for t, u in stale_raw
+    ]
+
     return templates.TemplateResponse("reports.html", {
         "request":        request,
         "current_user":   current_user,
@@ -133,4 +197,6 @@ def reports(
         "by_user":        by_user,
         "by_vendor":      by_vendor,
         "daily":          daily_sorted,
+        "stale_threads":  stale_threads,
+        "stale_days":     stale_days,
     })

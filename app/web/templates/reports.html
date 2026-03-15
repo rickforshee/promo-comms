@@ -125,4 +125,48 @@
     </div>
 
 </div>
+
+<!-- Stale threads -->
+<div class="report-section report-section-wide" style="margin-top:24px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <h3 class="report-section-title" style="margin-bottom:0;">Stale Open/Pending Threads</h3>
+        <form method="get" action="/reports" style="display:flex;align-items:center;gap:8px;margin:0;">
+            <input type="hidden" name="date_from" value="{{ date_from }}">
+            <input type="hidden" name="date_to" value="{{ date_to }}">
+            <label style="font-size:13px;font-weight:600;color:#6b7280;">No activity for</label>
+            <input type="number" name="stale_days" value="{{ stale_days }}" min="1" max="365"
+                   style="width:64px;" class="date-input">
+            <label style="font-size:13px;font-weight:600;color:#6b7280;">days</label>
+            <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+        </form>
+    </div>
+    {% if stale_threads %}
+    <table class="report-table">
+        <thead>
+            <tr>
+                <th>Customer</th>
+                <th>Subject</th>
+                <th>Status</th>
+                <th>Assigned</th>
+                <th style="text-align:right;">Days Stale</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in stale_threads %}
+            <tr class="report-row-link" onclick="window.location='/threads/{{ item.thread.id }}';" style="cursor:pointer;">
+                <td>{{ item.customer_name or "—" }}</td>
+                <td>{{ item.thread.subject or "(no subject)" }}</td>
+                <td><span class="thread-status-badge status-{{ item.thread.status.value }}">{{ item.thread.status.value | title }}</span></td>
+                <td>{{ item.assigned_user.display_name if item.assigned_user else "—" }}</td>
+                <td style="text-align:right;font-weight:600;color:{% if item.days_stale >= 30 %}#dc2626{% elif item.days_stale >= 14 %}#d97706{% else %}#374151{% endif %};">
+                    {{ item.days_stale }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="report-empty">No open or pending threads stale for {{ stale_days }} days.</p>
+    {% endif %}
+</div>
 {% endblock %}

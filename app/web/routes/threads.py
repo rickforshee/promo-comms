@@ -641,8 +641,9 @@ async def thread_search(
     total_pages = (total + page_size - 1) // page_size
     users = db.query(User).filter(User.active == True).order_by(User.display_name).all()
 
-    return templates.TemplateResponse("threads/results_partial.html", {
+    ctx = {
         "request":         request,
+        "current_user":    current_user,
         "threads":         thread_data,
         "total":           total,
         "query":           q,
@@ -660,7 +661,11 @@ async def thread_search(
         "sort_by":         sort_by,
         "sort_dir":        sort_dir,
         "users":           users,
-    })
+    }
+
+    is_htmx = request.headers.get("HX-Request") == "true"
+    template = "threads/results_partial.html" if is_htmx else "threads/list.html"
+    return templates.TemplateResponse(template, ctx)
 
 
 def _rewrite_cid_urls(html: str, attachments: list) -> str:

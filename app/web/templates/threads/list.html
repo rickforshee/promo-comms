@@ -14,7 +14,7 @@
         </svg>
         <input type="text" id="search-input" name="q" class="search-input"
                placeholder="Search PO#, job#, tracking#, subject, vendor, sender…"
-               value="" autocomplete="off"
+               value="{{ query or '' }}" autocomplete="off"
                hx-get="/threads/search"
                hx-trigger="input changed delay:300ms, search"
                hx-target="#thread-results"
@@ -28,12 +28,12 @@
             hx-trigger="change"
             hx-target="#thread-results"
             hx-include="#search-form">
-        <option value="all">All threads</option>
-        <option value="mine">Assigned to me</option>
-        <option value="has_po">Has PO links</option>
-        <option value="has_job">Has job links</option>
-        <option value="has_tracking">Has tracking</option>
-        <option value="unlinked">Unlinked only</option>
+        <option value="all" {% if (link_filter or 'all') == 'all' %}selected{% endif %}>All threads</option>
+        <option value="mine" {% if link_filter == 'mine' %}selected{% endif %}>Assigned to me</option>
+        <option value="has_po" {% if link_filter == 'has_po' %}selected{% endif %}>Has PO links</option>
+        <option value="has_job" {% if link_filter == 'has_job' %}selected{% endif %}>Has job links</option>
+        <option value="has_tracking" {% if link_filter == 'has_tracking' %}selected{% endif %}>Has tracking</option>
+        <option value="unlinked" {% if link_filter == 'unlinked' %}selected{% endif %}>Unlinked only</option>
     </select>
 
     <select id="status-filter" name="status_filter" class="filter-select"
@@ -41,11 +41,11 @@
             hx-trigger="change"
             hx-target="#thread-results"
             hx-include="#search-form">
-        <option value="all">Any status</option>
-        <option value="open">Open</option>
-        <option value="pending">Pending</option>
-        <option value="resolved">Resolved</option>
-        <option value="closed">Closed</option>
+        <option value="all" {% if (status_filter or 'all') == 'all' %}selected{% endif %}>Any status</option>
+        <option value="open" {% if status_filter == 'open' %}selected{% endif %}>Open</option>
+        <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+        <option value="resolved" {% if status_filter == 'resolved' %}selected{% endif %}>Resolved</option>
+        <option value="closed" {% if status_filter == 'closed' %}selected{% endif %}>Closed</option>
     </select>
 </div>
 
@@ -53,7 +53,7 @@
     <input type="text" id="sender-filter" name="sender_filter" class="search-input"
            style="padding-left:12px;"
            placeholder="Filter by sender…"
-           value=""
+           value="{{ sender_filter or '' }}"
            hx-get="/threads/search"
            hx-trigger="input changed delay:400ms, search"
            hx-target="#thread-results"
@@ -63,10 +63,10 @@
             hx-trigger="change"
             hx-target="#thread-results"
             hx-include="#search-form">
-        <option value="all">Any assignee</option>
-        <option value="unassigned">Unassigned</option>
+        <option value="all" {% if (assigned_filter or 'all') == 'all' %}selected{% endif %}>Any assignee</option>
+        <option value="unassigned" {% if assigned_filter == 'unassigned' %}selected{% endif %}>Unassigned</option>
         {% for u in users %}
-        <option value="{{ u.id }}">{{ u.display_name or u.email }}</option>
+        <option value="{{ u.id }}" {% if assigned_filter == u.id | string %}selected{% endif %}>{{ u.display_name or u.email }}</option>
         {% endfor %}
     </select>
 </div>
@@ -74,12 +74,14 @@
 <div class="date-filter-bar">
     <label class="date-filter-label">From</label>
     <input type="date" name="date_from" class="date-input"
+           value="{{ date_from or '' }}"
            hx-get="/threads/search"
            hx-trigger="change"
            hx-target="#thread-results"
            hx-include="#search-form">
     <label class="date-filter-label">To</label>
     <input type="date" name="date_to" class="date-input"
+           value="{{ date_to or '' }}"
            hx-get="/threads/search"
            hx-trigger="change"
            hx-target="#thread-results"

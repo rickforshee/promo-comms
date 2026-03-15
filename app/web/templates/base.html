@@ -8,6 +8,7 @@
     <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
     <link rel="stylesheet" href="/static/style.css">
+    {% block extra_head %}{% endblock %}
 </head>
 <body>
     {% if current_user is defined and current_user %}
@@ -17,9 +18,9 @@
     <span>Promo Command Center</span>
 </a>
         <div class="navbar-links">
-            <a href="/threads">Inbox</a>
-            <a href="/dashboard">Dashboard</a>
-            <a href="/reports">Reports</a>
+            <a href="/threads" {% if request.url.path.startswith('/threads') %}class="nav-active"{% endif %}>Inbox</a>
+            <a href="/dashboard" {% if request.url.path.startswith('/dashboard') %}class="nav-active"{% endif %}>Dashboard</a>
+            <a href="/reports" {% if request.url.path.startswith('/reports') %}class="nav-active"{% endif %}>Reports</a>
             <div class="nav-user-menu">
                 <button class="nav-user-btn" onclick="toggleUserMenu(event)">
                     <div class="initials-badge initials-badge-sm">
