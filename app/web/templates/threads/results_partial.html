@@ -49,10 +49,23 @@
         <tr class="thread-row" onclick="window.location='/threads/{{ item.thread.id }}'">
             <td class="thread-customer" title="{{ item.customer_name }}">{{ item.customer_name or "—" }}</td>
             <td class="thread-subject">
-                {{ item.thread.subject or "(no subject)" }}
-                {% if item.has_attachments %}
-                <span class="attach-indicator" title="Has attachments">📎</span>
-                {% endif %}
+                <div class="thread-subject-text">
+                    {{ item.thread.subject or "(no subject)" }}
+                    {% if item.has_attachments %}
+                    <span class="attach-indicator" title="Has attachments">📎</span>
+                    {% endif %}
+                </div>
+                <div class="thread-row-meta">
+                    {% set s = item.status or 'open' %}
+                    <span class="thread-status-badge {{ status_colors[s] if status_colors is defined and s in status_colors else 'status-open' }}">
+                        {{ status_labels[s] if status_labels is defined and s in status_labels else s.title() }}
+                    </span>
+                    {% if item.assigned_user %}
+                    <span class="thread-row-meta-assignee">{{ item.assigned_user.display_name or item.assigned_user.email }}</span>
+                    {% else %}
+                    <span class="thread-row-meta-assignee thread-row-meta-unassigned">Unassigned</span>
+                    {% endif %}
+                </div>
             </td>
             <td class="thread-from">
                 {% if item.latest_email %}
@@ -66,7 +79,7 @@
                     </span>
                 {% else %}—{% endif %}
             </td>
-            <td>
+            <td class="thread-status-col">
                 {% set s = item.status or 'open' %}
                 <span class="thread-status-badge {{ status_colors[s] if status_colors is defined and s in status_colors else 'status-open' }}">
                     {{ status_labels[s] if status_labels is defined and s in status_labels else s.title() }}

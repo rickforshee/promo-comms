@@ -49,6 +49,12 @@
     </select>
 </div>
 
+<button type="button" class="filters-toggle-btn" id="filters-toggle-btn">
+    <span>Filters<span class="filters-active-badge" id="filters-count-badge" style="display:none;"></span></span>
+    <i class="chevron">▾</i>
+</button>
+
+<div id="extra-filters" class="extra-filters-panel">
 <div class="search-bar">
     <input type="text" id="sender-filter" name="sender_filter" class="search-input"
            style="padding-left:12px;"
@@ -91,7 +97,49 @@
         htmx.trigger('#search-input', 'search');
     ">Clear dates</button>
 </div>
+</div><!-- #extra-filters -->
 </form>
+
+<script>
+(function () {
+    var btn = document.getElementById('filters-toggle-btn');
+    var panel = document.getElementById('extra-filters');
+    var badge = document.getElementById('filters-count-badge');
+
+    function countActive() {
+        var n = 0;
+        var sender = document.getElementById('sender-filter');
+        var assignee = document.getElementById('assigned-filter');
+        var df = panel.querySelector('[name="date_from"]');
+        var dt = panel.querySelector('[name="date_to"]');
+        if (sender && sender.value) n++;
+        if (assignee && assignee.value && assignee.value !== 'all') n++;
+        if (df && df.value) n++;
+        if (dt && dt.value) n++;
+        return n;
+    }
+
+    function updateBadge() {
+        var n = countActive();
+        if (n > 0) { badge.textContent = n; badge.style.display = 'inline'; }
+        else { badge.style.display = 'none'; }
+    }
+
+    if (countActive() > 0) {
+        panel.classList.add('open');
+        btn.classList.add('open');
+    }
+
+    btn.addEventListener('click', function () {
+        panel.classList.toggle('open');
+        btn.classList.toggle('open');
+    });
+
+    updateBadge();
+    panel.addEventListener('change', updateBadge);
+    panel.addEventListener('input', updateBadge);
+})();
+</script>
 
 <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
     <a id="export-csv-link" href="/threads/export.csv" class="btn-clear-dates" style="text-decoration:none;">
