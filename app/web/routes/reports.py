@@ -1,0 +1,135 @@
+from datetime import datetime, timedelta, date
+from fastapi import APIRouter, Request, Depends
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import Session
+from sqlalchemy import func
+
+from app.web.auth import get_current_user, get_db
+from app.models import (
+    Email, EmailDirection, Thread, User,
+    ThreadPOLink, PacePOCache, PaceVendorCache,
+)
+
+router = APIRouter()
+templates: Jinja2Templates = None
+
+
+def set_templates(t: Jinja2Templates):
+    global templates
+    templates = t
+
+
+def _parse_date(s: str | None) -> date | None:
+    try:
+        return date.fromisoformat(s) if s else None
+    except (ValueError, TypeError):
+        return None
+
+
+@router.get("/reports", response_class=HTMLResponse)
+def reports(
+    request: Request,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    df = _parse_date(date_from)
+    dt = _parse_date(date_to)
+
+    # Default to last 30 days if no range specified
+    if not df and not dt:
+        df = (datetime.utcnow() - timedelta(days=30)).date()
+        dt = datetime.utcnow().date()
+        date_from = df.isoformat()
+        date_to   = dt.isoformat()
+
+    df_dt = datetime(df.year, df.month, df.day) if df else None
+    dt_dt = datetime(dt.year, dt.month, dt.day, 23, 59, 59) if dt else None
+
+    # ── Volume by direction ────────────────────────────────────────────────
+    dir_q = db.query(Email.direction, func.count(Email.id).label("cnt")).group_by(Email.direction)
+    if df_dt:
+        dir_q = dir_q.filter(Email.received_at >= df_dt)
+    if dt_dt:
+        dir_q = dir_q.filter(Email.received_at <= dt_dt)
+    direction_counts = {row.direction: row.cnt for row in dir_q.all()}
+    inbound_count  = direction_counts.get(EmailDirection.inbound,  0)
+    outbound_count = direction_counts.get(EmailDirection.outbound, 0)
+
+    # ── Volume by team member (outbound emails sent) ───────────────────────
+    by_user_q = (
+        db.query(User.display_name, User.email, func.count(Email.id).label("cnt"))
+        .join(Email, Email.sender_email == User.email)
+        .filter(Email.direction == EmailDirection.outbound)
+    )
+    if df_dt:
+        by_user_q = by_user_q.filter(Email.received_at >= df_dt)
+    if dt_dt:
+        by_user_q = by_user_q.filter(Email.received_at <= dt_dt)
+    by_user = (
+        by_user_q
+        .group_by(User.id, User.display_name, User.email)
+        .order_by(func.count(Email.id).desc())
+        .all()
+    )
+
+    # ── Volume by vendor (via PO links) ───────────────────────────────────
+    # Join emails → threads → PO links → PO cache → vendor cache
+    vendor_q = (
+        db.query(PaceVendorCache.company_name, func.count(Email.id).label("cnt"))
+        .join(Thread, Thread.id == Email.thread_id)
+        .join(ThreadPOLink, ThreadPOLink.thread_id == Thread.id)
+        .join(PacePOCache, PacePOCache.po_number == ThreadPOLink.po_number)
+        .join(PaceVendorCache, PaceVendorCache.vendor_id == PacePOCache.vendor_id)
+        .filter(PaceVendorCache.company_name.isnot(None))
+    )
+    if df_dt:
+        vendor_q = vendor_q.filter(Email.received_at >= df_dt)
+    if dt_dt:
+        vendor_q = vendor_q.filter(Email.received_at <= dt_dt)
+    by_vendor = (
+        vendor_q
+        .group_by(PaceVendorCache.vendor_id, PaceVendorCache.company_name)
+        .order_by(func.count(Email.id).desc())
+        .limit(20)
+        .all()
+    )
+
+    # ── Daily volume (for sparkline table) ────────────────────────────────
+    daily_q = (
+        db.query(
+            func.date_trunc("day", Email.received_at).label("day"),
+            Email.direction,
+            func.count(Email.id).label("cnt"),
+        )
+        .group_by("day", Email.direction)
+        .order_by("day")
+    )
+    if df_dt:
+        daily_q = daily_q.filter(Email.received_at >= df_dt)
+    if dt_dt:
+        daily_q = daily_q.filter(Email.received_at <= dt_dt)
+    daily_rows = daily_q.all()
+
+    daily: dict[str, dict] = {}
+    for row in daily_rows:
+        key = row.day.strftime("%Y-%m-%d") if row.day else "unknown"
+        if key not in daily:
+            daily[key] = {"inbound": 0, "outbound": 0}
+        daily[key][row.direction.value] += row.cnt
+    daily_sorted = sorted(daily.items())
+
+    return templates.TemplateResponse("reports.html", {
+        "request":        request,
+        "current_user":   current_user,
+        "date_from":      date_from or "",
+        "date_to":        date_to or "",
+        "inbound_count":  inbound_count,
+        "outbound_count": outbound_count,
+        "total_count":    inbound_count + outbound_count,
+        "by_user":        by_user,
+        "by_vendor":      by_vendor,
+        "daily":          daily_sorted,
+    })

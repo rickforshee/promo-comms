@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Reports — Promo Comms{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Reports</h2>
+</div>
+
+<form method="get" action="/reports" style="display:flex;gap:10px;align-items:center;margin-bottom:24px;flex-wrap:wrap;">
+    <label style="font-size:13px;font-weight:600;color:#6b7280;">From</label>
+    <input type="date" name="date_from" value="{{ date_from }}" class="date-input">
+    <label style="font-size:13px;font-weight:600;color:#6b7280;">To</label>
+    <input type="date" name="date_to" value="{{ date_to }}" class="date-input">
+    <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+    <a href="/reports" class="btn-clear-dates" style="text-decoration:none;">Reset</a>
+</form>
+
+<!-- Summary cards -->
+<div class="report-cards">
+    <div class="report-card">
+        <div class="report-card-label">Total Emails</div>
+        <div class="report-card-value">{{ total_count | int }}</div>
+    </div>
+    <div class="report-card">
+        <div class="report-card-label">Inbound</div>
+        <div class="report-card-value" style="color:#1a6eb5;">{{ inbound_count | int }}</div>
+    </div>
+    <div class="report-card">
+        <div class="report-card-label">Outbound</div>
+        <div class="report-card-value" style="color:#198754;">{{ outbound_count | int }}</div>
+    </div>
+</div>
+
+<div class="report-grid">
+
+    <!-- Daily volume -->
+    <div class="report-section report-section-wide">
+        <h3 class="report-section-title">Daily Volume</h3>
+        {% if daily %}
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th style="text-align:right;">Inbound</th>
+                    <th style="text-align:right;">Outbound</th>
+                    <th style="text-align:right;">Total</th>
+                    <th style="width:160px;">Bar</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set max_total = daily | map(attribute=1) | map(attribute='inbound') | list %}
+                {% set max_out   = daily | map(attribute=1) | map(attribute='outbound') | list %}
+                {% set all_totals = [] %}
+                {% for day, counts in daily %}
+                    {% set _ = all_totals.append(counts.inbound + counts.outbound) %}
+                {% endfor %}
+                {% set max_val = all_totals | max if all_totals else 1 %}
+                {% for day, counts in daily %}
+                {% set total = counts.inbound + counts.outbound %}
+                <tr>
+                    <td style="white-space:nowrap;">{{ day }}</td>
+                    <td style="text-align:right;">{{ counts.inbound }}</td>
+                    <td style="text-align:right;">{{ counts.outbound }}</td>
+                    <td style="text-align:right;font-weight:600;">{{ total }}</td>
+                    <td>
+                        <div style="display:flex;height:12px;border-radius:3px;overflow:hidden;background:#f3f4f6;">
+                            <div style="width:{{ ((counts.inbound / max_val) * 100) | int }}%;background:#1a6eb5;"></div>
+                            <div style="width:{{ ((counts.outbound / max_val) * 100) | int }}%;background:#198754;"></div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="report-empty">No email activity in this date range.</p>
+        {% endif %}
+    </div>
+
+    <!-- By team member -->
+    <div class="report-section">
+        <h3 class="report-section-title">Outbound by Team Member</h3>
+        {% if by_user %}
+        <table class="report-table">
+            <thead>
+                <tr><th>Name</th><th style="text-align:right;">Sent</th></tr>
+            </thead>
+            <tbody>
+                {% for row in by_user %}
+                <tr>
+                    <td>{{ row.display_name or row.email }}</td>
+                    <td style="text-align:right;font-weight:600;">{{ row.cnt }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="report-empty">No outbound emails in this date range.</p>
+        {% endif %}
+    </div>
+
+    <!-- By vendor -->
+    <div class="report-section">
+        <h3 class="report-section-title">Volume by Vendor (top 20)</h3>
+        {% if by_vendor %}
+        <table class="report-table">
+            <thead>
+                <tr><th>Vendor</th><th style="text-align:right;">Emails</th></tr>
+            </thead>
+            <tbody>
+                {% for row in by_vendor %}
+                <tr>
+                    <td>{{ row.company_name }}</td>
+                    <td style="text-align:right;font-weight:600;">{{ row.cnt }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="report-empty">No vendor-linked emails in this date range.</p>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
