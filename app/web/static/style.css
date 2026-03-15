@@ -30,17 +30,19 @@ a:hover { text-decoration: underline; }
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 24px;
-    height: 52px;
+    padding: 0 12px;
+    height: 48px;
     position: sticky;
     top: 0;
     z-index: 100;
 }
 .navbar-brand { font-size: 16px; font-weight: 700; letter-spacing: .5px; color: #fff; }
-.navbar-links { display: flex; align-items: center; gap: 20px; }
-.navbar-links a { color: #c8d0e0; font-size: 13px; }
+.navbar-links { display: flex; align-items: center; gap: 10px; }
+.navbar-links a { color: #c8d0e0; font-size: 12px; }
 .navbar-links a:hover { color: #fff; text-decoration: none; }
 .navbar-links a.nav-active { color: #fff; font-weight: 700; }
+.navbar-brand span { display: none; }
+.nav-user-name { display: none; }
 .navbar-user { color: #8892a4; font-size: 13px; }
 .btn-logout {
     background: #2d2d44;
@@ -51,7 +53,7 @@ a:hover { text-decoration: underline; }
 .btn-logout:hover { background: #3d3d5c; text-decoration: none !important; }
 
 /* ── Container ─────────────────────────────────────────────────────────────── */
-.container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+.container { max-width: 1400px; margin: 0 auto; padding: 12px; }
 
 /* ── Page Header ───────────────────────────────────────────────────────────── */
 .page-header {
@@ -101,11 +103,21 @@ a:hover { text-decoration: underline; }
 .thread-table tbody tr:hover { background: #f8f9ff; }
 .thread-table tbody tr:last-child { border-bottom: none; }
 .thread-table td { padding: 10px 16px; vertical-align: middle; }
-.thread-subject { font-weight: 500; max-width: 500px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.thread-subject { font-weight: 500; max-width: none; white-space: normal; overflow: hidden; text-overflow: ellipsis; }
 .thread-from { color: #6b7280; max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .thread-date { color: #9ca3af; white-space: nowrap; font-size: 12px; }
 .thread-links { white-space: nowrap; }
 .thread-customer { max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Mobile: hide low-priority columns */
+.thread-customer,
+.thread-from,
+.thread-assigned,
+.thread-links { display: none; }
+.thread-table th:nth-child(1),
+.thread-table th:nth-child(3),
+.thread-table th:nth-child(6),
+.thread-table th:nth-child(7) { display: none; }
 
 /* ── Tags ──────────────────────────────────────────────────────────────────── */
 .tag {
@@ -143,7 +155,7 @@ a:hover { text-decoration: underline; }
 /* ── Detail Layout ─────────────────────────────────────────────────────────── */
 .detail-layout {
     display: grid;
-    grid-template-columns: 1fr 320px;
+    grid-template-columns: 1fr;
     gap: 20px;
     align-items: start;
 }
@@ -863,7 +875,7 @@ a:hover { text-decoration: underline; }
 .email-card--outbound {
     background: #f0f7ff;
     border-left: 3px solid var(--accent);
-    margin-left: 24px;
+    margin-left: 0;
 }
 
 .email-direction-badge {
@@ -905,8 +917,8 @@ a:hover { text-decoration: underline; }
     display: flex;
     flex-direction: column;
     align-self: start;
-    height: calc(100vh - 120px);
-    overflow: hidden;
+    height: auto;
+    overflow: visible;
 }
 
 .thread-tabs {
@@ -938,12 +950,12 @@ a:hover { text-decoration: underline; }
 .tab-content.active {
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: visible;
 }
 
 #email-list-wrap {
     flex: 1;
-    overflow-y: auto;
+    overflow-y: visible;
     min-height: 0;
 }
 
@@ -1036,11 +1048,11 @@ a:hover { text-decoration: underline; }
 .filter-input::placeholder { color: #9ca3af; }
 
 /* Reports */
-.report-cards { display:flex; gap:16px; margin-bottom:24px; flex-wrap:wrap; }
-.report-card { background:#fff; border-radius:10px; box-shadow:0 1px 6px rgba(0,0,0,.07); padding:20px 28px; min-width:140px; flex:1; }
-.report-card-label { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; color:#6b7280; margin-bottom:6px; }
-.report-card-value { font-size:32px; font-weight:700; color:#1a1a2e; }
-.report-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+.report-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:16px; }
+.report-card { background:#fff; border-radius:10px; box-shadow:0 1px 6px rgba(0,0,0,.07); padding:12px 10px; min-width:0; }
+.report-card-label { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; color:#6b7280; margin-bottom:6px; }
+.report-card-value { font-size:22px; font-weight:700; color:#1a1a2e; }
+.report-grid { display:grid; grid-template-columns:1fr; gap:20px; }
 .report-section-wide { grid-column:1 / -1; }
 .report-section { background:#fff; border-radius:10px; box-shadow:0 1px 6px rgba(0,0,0,.07); padding:20px 24px; }
 .report-section-title { font-size:14px; font-weight:700; color:#1a1a2e; margin-bottom:14px; text-transform:uppercase; letter-spacing:.4px; }
@@ -1053,76 +1065,47 @@ a:hover { text-decoration: underline; }
 .report-card-link { text-decoration:none; color:inherit; transition:box-shadow .15s, transform .1s; }
 .report-card-link:hover { box-shadow:0 4px 14px rgba(0,0,0,.12); transform:translateY(-1px); }
 .report-table tbody tr.report-row-link:hover { background:#f0f4ff; }
+.col-sparkline { display: none; }
 
-/* ── Responsive — Tablet (≤ 900px) ────────────────────────────────────────── */
-@media (max-width: 900px) {
-    /* Detail layout: stack side panel below email thread */
-    .detail-layout { grid-template-columns: 1fr; }
-    .thread-tabs-wrap { height: auto; max-height: none; overflow: visible; }
-    .tab-content.active { overflow: visible; }
-    #email-list-wrap { overflow: visible; }
+/* ── Responsive — Tablet+ (≥ 641px) ──────────────────────────────────────── */
+@media (min-width: 641px) {
+    .container { padding: 24px; }
 
-    /* Report grid: single column */
-    .report-grid { grid-template-columns: 1fr; }
+    .navbar { padding: 0 24px; height: 52px; }
+    .navbar-brand span { display: inline; }
+    .navbar-links { gap: 20px; }
+    .navbar-links a { font-size: 13px; }
+    .nav-user-name { display: inline; }
+
+    .report-cards { gap: 16px; margin-bottom: 24px; }
+    .report-card { padding: 20px 28px; }
+    .report-card-value { font-size: 32px; }
+    .report-card-label { font-size: 12px; }
+
+    .email-card--outbound { margin-left: 24px; }
+
+    .thread-customer,
+    .thread-from,
+    .thread-assigned,
+    .thread-links { display: table-cell; }
+    .thread-table th:nth-child(1),
+    .thread-table th:nth-child(3),
+    .thread-table th:nth-child(6),
+    .thread-table th:nth-child(7) { display: table-cell; }
+    .thread-subject { max-width: 500px; white-space: nowrap; }
+
+    .col-sparkline { display: table-cell; }
 }
 
-/* ── Responsive — Mobile (≤ 640px) ────────────────────────────────────────── */
-@media (max-width: 640px) {
-    /* Navbar: hide brand text and user display name to save space */
-    .navbar { padding: 0 12px; height: 48px; }
-    .navbar-brand span { display: none; }
-    .navbar-links { gap: 10px; }
-    .navbar-links a { font-size: 12px; }
-    .nav-user-name { display: none; }
+/* ── Responsive — Desktop (≥ 901px) ───────────────────────────────────────── */
+@media (min-width: 901px) {
+    .detail-layout { grid-template-columns: 1fr 320px; align-items: stretch; }
 
-    /* Container */
-    .container { padding: 12px; }
+    .thread-tabs-wrap { height: calc(100vh - 120px); overflow: hidden; }
+    .tab-content.active { overflow: hidden; }
+    #email-list-wrap { overflow-y: auto; }
 
-    /* Thread table: hide low-priority columns on mobile.
-       Kept: Subject (2), Latest (4), Status (5).
-       Hidden: Customer (1), From (3), Assigned (6), Links (7). */
-    .thread-table th:nth-child(1),
-    .thread-table td:nth-child(1),
-    .thread-table th:nth-child(3),
-    .thread-table td:nth-child(3),
-    .thread-table th:nth-child(6),
-    .thread-table td:nth-child(6),
-    .thread-table th:nth-child(7),
-    .thread-table td:nth-child(7) { display: none; }
-    .thread-subject { max-width: none; white-space: normal; }
-
-    /* Search filters: wrap onto multiple lines */
-    .search-bar { flex-wrap: wrap; }
-    .filter-select { flex: 1; min-width: 120px; }
-    .date-filter-bar { flex-wrap: wrap; }
-
-    /* Outbound email: remove desktop indent */
-    .email-card--outbound { margin-left: 0; }
-
-    /* Report cards: 3-column grid, one per card, reduce padding */
-    .report-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-    .report-card { padding: 12px 10px; min-width: 0; }
-    .report-card-value { font-size: 22px; }
-    .report-card-label { font-size: 10px; }
-
-    /* Report sections: reduce padding */
-    .report-section { padding: 14px; }
-
-    /* Daily volume: hide sparkline bar column on mobile */
-    .col-sparkline { display: none; }
-
-    /* Stale section header: stack threshold form below title */
-    .report-section-wide > div:first-child { flex-wrap: wrap; gap: 8px; }
-
-    /* Forms: full-width date inputs */
-    .date-input { flex: 1; min-width: 120px; }
-
-    /* Page header */
-    .page-header h2 { font-size: 18px; }
-
-    /* Btn primary: override full-width default only in filter contexts */
-    .search-bar .btn-primary,
-    .date-filter-bar .btn-primary { width: auto; }
+    .report-grid { grid-template-columns: 1fr 1fr; }
 }
 
 /* Proof recipient field */

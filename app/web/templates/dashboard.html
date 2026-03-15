@@ -10,14 +10,14 @@
     /* ── Stat cards ─────────────────────────────────────────────────── */
     .stat-grid {
         display: grid;
-        grid-template-columns: repeat(5, 1fr);
-        gap: 14px;
-        margin-bottom: 32px;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 24px;
     }
     .stat-card {
         background: var(--surface);
         border-radius: 10px;
-        padding: 20px;
+        padding: 14px;
         box-shadow: 0 1px 3px rgba(0,0,0,.08);
         border-top: 3px solid transparent;
         text-decoration: none;
@@ -39,11 +39,11 @@
     /* ── Two-column section layout ──────────────────────────────────── */
     .dash-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-        margin-bottom: 20px;
+        grid-template-columns: 1fr;
+        gap: 16px;
+        margin-bottom: 16px;
     }
-    .dash-grid--wide { grid-template-columns: 2fr 1fr; }
+    .dash-grid--wide { grid-template-columns: 1fr; }
 
     /* ── Panels ─────────────────────────────────────────────────────── */
     .dash-panel {
@@ -129,15 +129,15 @@
     .dash-empty { padding: 24px 18px; color: var(--text-muted); font-size: 0.855rem; text-align: center; }
 
     /* ── Alert strip ────────────────────────────────────────────────── */
-    /* ── Responsive ─────────────────────────────────────────────────── */
-    @media (max-width: 900px) {
-        .dash-grid, .dash-grid--wide { grid-template-columns: 1fr; }
+    /* ── Responsive — Tablet+ ────────────────────────────────────────── */
+    @media (min-width: 641px) {
+        .stat-grid { grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 32px; }
+        .stat-card { padding: 20px; }
     }
-    @media (max-width: 640px) {
-        .stat-grid { grid-template-columns: 1fr 1fr; }
-        .dash-page { padding: 0; }
-        .stat-card { padding: 14px; }
-        .stat-value { font-size: 1.5rem; }
+    @media (min-width: 901px) {
+        .stat-grid { grid-template-columns: repeat(5, 1fr); }
+        .dash-grid { grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+        .dash-grid--wide { grid-template-columns: 2fr 1fr; }
     }
     .dash-alert {
         display: flex; align-items: center; gap: 10px;
