@@ -1036,7 +1036,7 @@ a:hover { text-decoration: underline; }
 
 /* Reports */
 .report-cards { display:flex; gap:16px; margin-bottom:24px; flex-wrap:wrap; }
-.report-card { background:#fff; border-radius:10px; box-shadow:0 1px 6px rgba(0,0,0,.07); padding:20px 28px; min-width:140px; }
+.report-card { background:#fff; border-radius:10px; box-shadow:0 1px 6px rgba(0,0,0,.07); padding:20px 28px; min-width:140px; flex:1; }
 .report-card-label { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; color:#6b7280; margin-bottom:6px; }
 .report-card-value { font-size:32px; font-weight:700; color:#1a1a2e; }
 .report-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
