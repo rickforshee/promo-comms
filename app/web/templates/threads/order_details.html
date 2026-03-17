@@ -17,8 +17,9 @@
         {% if po %}
         <span class="od-label">PO #</span><span class="od-value">{{ po.po_number }}</span>
         <span class="od-label">Order Total</span><span class="od-value">{{ '${:,.2f}'.format(po.order_total) if po.order_total else '—' }}</span>
-        {% if po.contact_first_name or po.contact_last_name %}
-        <span class="od-label">Vendor Contact</span><span class="od-value">{{ [po.contact_first_name, po.contact_last_name] | select | join(' ') }}</span>
+        {% set contact = [po.contact_first_name, po.contact_last_name] | select | join(' ') %}
+        {% if contact and not contact.startswith('PO ') %}
+        <span class="od-label">Vendor Contact</span><span class="od-value">{{ contact }}</span>
         {% endif %}
         {% endif %}
     </div>
