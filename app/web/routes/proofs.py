@@ -14,16 +14,23 @@ from app.models import (
 )
 
 def _get_order_details(thread_id: int, db) -> dict:
-    """Pull job and PO data linked to a thread for the order details widget."""
-    from app.models import ThreadJobLink, ThreadPOLink, PaceJobCache, PacePOCache
-    job, po = None, None
+    """Pull job, PO, and shipment data linked to a thread for the order details widget."""
+    from app.models import ThreadJobLink, ThreadPOLink, PaceJobCache, PacePOCache, PaceShipmentCache
+    job, po, shipment = None, None, None
     job_link = db.query(ThreadJobLink).filter(ThreadJobLink.thread_id == thread_id).first()
     if job_link:
         job = db.query(PaceJobCache).filter(PaceJobCache.job_number == job_link.job_number).first()
     po_link = db.query(ThreadPOLink).filter(ThreadPOLink.thread_id == thread_id).first()
     if po_link:
         po = db.query(PacePOCache).filter(PacePOCache.po_number == po_link.po_number).first()
-    return {"job": job, "po": po}
+    if job:
+        shipment = (
+            db.query(PaceShipmentCache)
+            .filter(PaceShipmentCache.job_number == job.job_number)
+            .order_by(PaceShipmentCache.ship_date.asc().nullslast())
+            .first()
+        )
+    return {"job": job, "po": po, "shipment": shipment}
 
 
 router = APIRouter()

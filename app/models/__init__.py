@@ -318,6 +318,27 @@ class PaceCustomerCache(Base):
     account_balance    = Column(Numeric(12, 2))
     cached_at          = Column(DateTime, server_default=func.now())
 
+class PaceShipmentCache(Base):
+    __tablename__ = "pace_shipment_cache"
+
+    shipment_id        = Column(String(12),  primary_key=True)
+    job_number         = Column(String(12),  nullable=False, index=True)
+    shipped            = Column(Boolean())
+    ship_date          = Column(Date)
+    promise_date       = Column(Date)
+    tracking_number    = Column(String(100))
+    weight             = Column(Numeric(8, 2))
+    ship_name          = Column(String(255))
+    address1           = Column(String(255))
+    city               = Column(String(100))
+    state_id           = Column(String(20))
+    zip                = Column(String(20))
+    contact_first_name = Column(String(100))
+    charges            = Column(String(100))
+    account_number     = Column(String(50))
+    cached_at          = Column(DateTime, server_default=func.now())
+
+
 class ThreadTrackingLink(Base):
     __tablename__ = "thread_tracking_links"
     id              = Column(Integer, primary_key=True)

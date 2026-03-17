@@ -28,6 +28,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.models import (
     PaceJobCache, PacePOCache, PaceVendorCache, PaceCustomerCache,
+    PaceShipmentCache,
 )
 from app.services.pace_client import PaceClient
 
@@ -101,13 +102,14 @@ class PaceCacheService:
         summary["jobs"]      = self.refresh_jobs()
         summary["vendors"]   = self.refresh_vendors()
         summary["customers"] = self.refresh_customers()
+        summary["shipments"] = self.refresh_shipments()
 
         logger.info(
             f"Cache refresh complete — "
             f"jobs: {summary['jobs']}, "
-            f"POs: {summary['pos']}, "
             f"vendors: {summary['vendors']}, "
-            f"customers: {summary['customers']}"
+            f"customers: {summary['customers']}, "
+            f"shipments: {summary['shipments']}"
         )
         return summary
 
@@ -299,6 +301,65 @@ class PaceCacheService:
 
         self.db.commit()
         logger.info(f"Vendor cache refresh complete — {count} records")
+        return count
+
+    def refresh_shipments(self) -> int:
+        """Refresh pace_shipment_cache from Pace read-only DB.
+
+        Queries jobshipment directly — ccmasterid = job_number in Pace.
+        Only loads shipments for jobs already in pace_job_cache.
+        """
+        from sqlalchemy import create_engine, text
+        from app import config
+
+        logger.info("Refreshing shipment cache (via direct Pace DB)...")
+
+        job_numbers = [r[0] for r in self.db.query(PaceJobCache.job_number).all()]
+        if not job_numbers:
+            logger.info("No jobs in cache — skipping shipment refresh.")
+            return 0
+
+        engine = create_engine(config.PACE_DB_URL)
+        with engine.connect() as conn:
+            rows = conn.execute(text("""
+                SELECT ccshipmentid, ccmasterid, shipped, ccdate, promisedate,
+                       cctrackingnumber, ccweight, ccname, ccaddress1,
+                       cccity, systateid, cczip, contactfirstname,
+                       charges, accountnumber
+                FROM jobshipment
+                WHERE ccmasterid = ANY(:job_numbers)
+                AND shipmentdeleted = false
+            """), {"job_numbers": job_numbers}).fetchall()
+
+        count = 0
+        for row in rows:
+            mapped = {
+                "shipment_id":        str(row[0]),
+                "job_number":         str(row[1]),
+                "shipped":            row[2],
+                "ship_date":          row[3],
+                "promise_date":       row[4],
+                "tracking_number":    row[5],
+                "weight":             _safe_decimal(row[6]),
+                "ship_name":          row[7],
+                "address1":           row[8],
+                "city":               row[9],
+                "state_id":           row[10],
+                "zip":                row[11],
+                "contact_first_name": row[12],
+                "charges":            row[13],
+                "account_number":     row[14],
+            }
+            stmt = pg_insert(PaceShipmentCache).values(**mapped)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["shipment_id"],
+                set_={k: stmt.excluded[k] for k in mapped if k != "shipment_id"},
+            )
+            self.db.execute(stmt)
+            count += 1
+
+        self.db.commit()
+        logger.info("Shipment cache refreshed: %d records", count)
         return count
 
     def refresh_vendor_names(self) -> int:

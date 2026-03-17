@@ -21,6 +21,16 @@
         <span class="od-label">Vendor Contact</span><span class="od-value">{{ contact }}</span>
         {% endif %}
         {% endif %}
+        {% if order_details.shipment %}
+        {% set s = order_details.shipment %}
+        {% if s.contact_first_name %}
+        <span class="od-label">Ship To</span>
+        <span class="od-value">
+          {{ s.contact_first_name }}{% if s.ship_name %} — {{ s.ship_name }}{% endif %}
+          {% if s.address1 %}<br><small style="color:var(--text-muted)">{{ s.address1 }}{% if s.city %}, {{ s.city }}{% endif %}{% if s.state_id %} {{ s.state_id }}{% endif %}{% if s.zip %} {{ s.zip }}{% endif %}</small>{% endif %}
+        </span>
+        {% endif %}
+        {% endif %}
     </div>
 </div>
 {% endif %}
