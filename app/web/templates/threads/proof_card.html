@@ -44,7 +44,9 @@
     </div>
     {% endif %}
 
+    {% with order_details = item.order_details %}
     {% include "threads/order_details.html" %}
+    {% endwith %}
 
     {% if proof.status != ProofStatus.approved %}
     <div class="proof-actions">
