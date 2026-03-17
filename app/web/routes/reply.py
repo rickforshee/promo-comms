@@ -16,6 +16,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
+from app import config
 from app.models import Email, Thread, ImportSource
 from app.services.graph_client import GraphClient
 from app.web.auth import get_current_user, get_db
@@ -139,43 +140,50 @@ async def send_reply(
     # Convert plain text body to basic HTML
     body_html = _text_to_html(body)
 
-    try:
-        client = GraphClient()
-
-        if reply_to_message_id:
-            # Reply to a specific message — preserves thread/conversation context
-            client.reply_to_message(
-                message_id=reply_to_message_id,
-                comment=body_html,
-                to_recipients=to_recipients,
-                cc_recipients=cc_recipients if cc_recipients else None,
-            )
-        else:
-            # No inbound message to reply to — send as new message
-            client.send_new_message(
-                to_recipients=to_recipients,
-                subject=subject,
-                body_html=body_html,
-                cc_recipients=cc_recipients if cc_recipients else None,
-            )
-
-    except Exception as e:
-        logger.error(f"Failed to send reply for thread {thread_id}: {e}")
-        return _templates.TemplateResponse(
-            "threads/reply_compose.html",
-            {
-                "request": request,
-                "thread": thread,
-                "to_email": to_email,
-                "to_name": to_name,
-                "subject": subject,
-                "reply_to_message_id": reply_to_message_id,
-                "body": body,
-                "cc_emails": cc_emails,
-                "error": f"Send failed: {e}",
-                "current_user": current_user,
-            },
+    if config.DRY_RUN:
+        logger.info(
+            "DRY RUN — reply suppressed to %s; test copy would go to %s",
+            to_email,
+            config.ALLOWED_TESTING_EMAIL or "(none configured)",
         )
+    else:
+        try:
+            client = GraphClient()
+
+            if reply_to_message_id:
+                # Reply to a specific message — preserves thread/conversation context
+                client.reply_to_message(
+                    message_id=reply_to_message_id,
+                    comment=body_html,
+                    to_recipients=to_recipients,
+                    cc_recipients=cc_recipients if cc_recipients else None,
+                )
+            else:
+                # No inbound message to reply to — send as new message
+                client.send_new_message(
+                    to_recipients=to_recipients,
+                    subject=subject,
+                    body_html=body_html,
+                    cc_recipients=cc_recipients if cc_recipients else None,
+                )
+
+        except Exception as e:
+            logger.error(f"Failed to send reply for thread {thread_id}: {e}")
+            return _templates.TemplateResponse(
+                "threads/reply_compose.html",
+                {
+                    "request": request,
+                    "thread": thread,
+                    "to_email": to_email,
+                    "to_name": to_name,
+                    "subject": subject,
+                    "reply_to_message_id": reply_to_message_id,
+                    "body": body,
+                    "cc_emails": cc_emails,
+                    "error": f"Send failed: {e}",
+                    "current_user": current_user,
+                },
+            )
 
     # ── Record outbound email in DB ─────────────────────────────────────────
     all_recipients = [to_email.strip()]
