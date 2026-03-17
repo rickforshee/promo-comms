@@ -1,4 +1,5 @@
 <div id="links-panel">
+{% set thread_id = thread_id if thread_id is defined else thread.id %}
 
     {% if error %}
     <div class="alert alert-error" style="margin-bottom:12px;">{{ error }}</div>
