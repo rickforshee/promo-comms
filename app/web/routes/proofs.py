@@ -13,6 +13,19 @@ from app.models import (
     Thread, Email, User
 )
 
+def _get_order_details(thread_id: int, db) -> dict:
+    """Pull job and PO data linked to a thread for the order details widget."""
+    from app.models import ThreadJobLink, ThreadPOLink, PaceJobCache, PacePOCache
+    job, po = None, None
+    job_link = db.query(ThreadJobLink).filter(ThreadJobLink.thread_id == thread_id).first()
+    if job_link:
+        job = db.query(PaceJobCache).filter(PaceJobCache.job_number == job_link.job_number).first()
+    po_link = db.query(ThreadPOLink).filter(ThreadPOLink.thread_id == thread_id).first()
+    if po_link:
+        po = db.query(PacePOCache).filter(PacePOCache.po_number == po_link.po_number).first()
+    return {"job": job, "po": po}
+
+
 router = APIRouter()
 templates = None
 
@@ -94,6 +107,7 @@ def proofs_tab(
         .all()
     )
 
+    order_details = _get_order_details(thread_id, db)
     proof_data = []
     for proof in proofs:
         attachment = db.query(Attachment).filter(Attachment.id == proof.attachment_id).first()
@@ -113,10 +127,11 @@ def proofs_tab(
         )
         client_email = (last_inbound.sender_email or "") if last_inbound else ""
         proof_data.append({
-            "proof":        proof,
-            "attachment":   attachment,
-            "history":      history,
-            "client_email": client_email,
+            "proof":         proof,
+            "attachment":    attachment,
+            "history":       history,
+            "client_email":  client_email,
+            "order_details": order_details,
         })
 
     return templates.TemplateResponse("threads/proofs_tab.html", {
@@ -202,10 +217,11 @@ def update_proof_status(
         "current_user": current_user,
         "thread":       thread,
         "item": {
-            "proof":        proof,
-            "attachment":   attachment,
-            "history":      history_rows,
-            "client_email": _client_email,
+            "proof":         proof,
+            "attachment":    attachment,
+            "history":       history_rows,
+            "client_email":  _client_email,
+            "order_details": _get_order_details(proof.thread_id, db),
         },
         "ProofStatus":  ProofStatus,
     })

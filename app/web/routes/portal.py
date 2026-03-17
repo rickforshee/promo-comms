@@ -14,6 +14,7 @@ from app import config
 from app.database import SessionLocal
 from app.services.proof_notifications import notify_vivid_proof_decided
 from app.models import Proof, ProofHistory, ProofStatus, Attachment, Thread
+from app.web.routes.proofs import _get_order_details
 
 router = APIRouter()
 templates = None
@@ -64,6 +65,7 @@ def portal_view(request: Request, token: str, db: Session = Depends(get_db)):
         "ProofStatus":    ProofStatus,
         "already_decided": already_decided,
         "token":          token,
+        "order_details":  _get_order_details(proof.thread_id, db),
     })
 
 

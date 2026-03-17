@@ -113,6 +113,8 @@
         </span>
       </div>
 
+      {% include "threads/order_details.html" %}
+
       {% if attachment and attachment.content_type and 'pdf' in attachment.content_type %}
         <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;padding:12px 16px;margin-bottom:16px;font-weight:bold;color:#92400e;">
           ⚠ Please review the proof below. Use the Approve or Request Revisions buttons at the bottom of this page to respond — do not use any forms within the document.

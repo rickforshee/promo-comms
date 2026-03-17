@@ -1,0 +1,26 @@
+{% if order_details and (order_details.job or order_details.po) %}
+{% set job = order_details.job %}
+{% set po = order_details.po %}
+<div class="order-details-widget">
+    <div class="order-details-title">Order Details</div>
+    <div class="order-details-grid">
+        {% if job %}
+        <span class="od-label">Job #</span><span class="od-value">{{ job.job_number }}</span>
+        <span class="od-label">Description</span><span class="od-value">{{ job.description or '—' }}</span>
+        <span class="od-label">Product Type</span><span class="od-value">{{ job.job_product_type or '—' }}</span>
+        <span class="od-label">Qty Ordered</span><span class="od-value">{{ job.qty_ordered | int if job.qty_ordered else '—' }}</span>
+        <span class="od-label">Quoted Price</span><span class="od-value">{{ '${:,.2f}'.format(job.quoted_price) if job.quoted_price else '—' }}</span>
+        {% if job.promise_date %}
+        <span class="od-label">Promise Date</span><span class="od-value">{{ job.promise_date.strftime('%b %d, %Y') }}</span>
+        {% endif %}
+        {% endif %}
+        {% if po %}
+        <span class="od-label">PO #</span><span class="od-value">{{ po.po_number }}</span>
+        <span class="od-label">Order Total</span><span class="od-value">{{ '${:,.2f}'.format(po.order_total) if po.order_total else '—' }}</span>
+        {% if po.contact_first_name or po.contact_last_name %}
+        <span class="od-label">Vendor Contact</span><span class="od-value">{{ [po.contact_first_name, po.contact_last_name] | select | join(' ') }}</span>
+        {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endif %}

@@ -44,6 +44,8 @@
     </div>
     {% endif %}
 
+    {% include "threads/order_details.html" %}
+
     {% if proof.status != ProofStatus.approved %}
     <div class="proof-actions">
         {% if proof.status == ProofStatus.received %}
