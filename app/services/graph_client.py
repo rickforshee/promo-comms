@@ -151,6 +151,24 @@ class GraphClient:
         log.info("Archived %d messages for thread %s", count, thread_id)
         return count
 
+    def set_message_flag(self, message_id: str, flagged: bool, due_date: str | None = None) -> None:
+        """Set or clear a follow-up flag on a message in the shared mailbox."""
+        mailbox = config.SHARED_MAILBOX
+        url = f"{config.GRAPH_BASE_URL}/users/{mailbox}/messages/{message_id}"
+        if flagged:
+            flag = {"flagStatus": "flagged"}
+            if due_date:
+                flag["dueDateTime"] = {"dateTime": f"{due_date}T00:00:00", "timeZone": "Eastern Standard Time"}
+                flag["startDateTime"] = {"dateTime": f"{due_date}T00:00:00", "timeZone": "Eastern Standard Time"}
+        else:
+            flag = {"flagStatus": "notFlagged"}
+        token = self._get_token()
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        resp = requests.patch(url, headers=headers, json={"flag": flag}, timeout=30)
+        if resp.status_code not in (200, 204):
+            raise RuntimeError(f"Graph PATCH flag failed [{resp.status_code}]: {resp.text[:300]}")
+        log.info("Set flag flagged=%s on message %s", flagged, message_id)
+
     def reply_to_message(
         self,
         message_id: str,

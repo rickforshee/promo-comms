@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date as date_type
 
 from app.web.auth import get_current_user, get_db
 from app.models import Thread, ThreadStatus, User, ThreadJobLink, ThreadPOLink
@@ -81,6 +81,16 @@ def dashboard(
         .all()
     )
 
+    today = date_type.today()
+    follow_ups = (
+        db.query(Thread)
+        .filter(Thread.flagged == True)
+        .filter(Thread.status.in_(["open", "pending"]))
+        .order_by(Thread.flag_due_date.asc().nullslast())
+        .limit(15)
+        .all()
+    )
+
     return templates.TemplateResponse("dashboard.html", {
         "request":         request,
         "current_user":    current_user,
@@ -90,5 +100,7 @@ def dashboard(
         "stale_threads":   stale_threads,
         "unlinked_count":  unlinked_count,
         "recent_threads":  recent_threads,
+        "follow_ups":      follow_ups,
+        "today":           today,
         "now":             datetime.utcnow(),
     })

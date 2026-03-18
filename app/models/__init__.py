@@ -85,6 +85,9 @@ class Thread(Base):
     created_at      = Column(DateTime, server_default=func.now())
     updated_at      = Column(DateTime, server_default=func.now(),
                              onupdate=func.now())
+    flagged       = Column(Boolean, nullable=False, default=False, server_default='false')
+    flag_due_date = Column(Date, nullable=True)
+    flag_note     = Column(String(500), nullable=True)
 
     assignee    = relationship("User", back_populates="assigned_threads")
     emails      = relationship("Email", back_populates="thread")

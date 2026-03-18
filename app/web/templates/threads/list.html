@@ -34,6 +34,7 @@
         <option value="has_job" {% if link_filter == 'has_job' %}selected{% endif %}>Has job links</option>
         <option value="has_tracking" {% if link_filter == 'has_tracking' %}selected{% endif %}>Has tracking</option>
         <option value="unlinked" {% if link_filter == 'unlinked' %}selected{% endif %}>Unlinked only</option>
+        <option value="has_flag" {% if link_filter == 'has_flag' %}selected{% endif %}>Flagged</option>
     </select>
 
     <select id="status-filter" name="status_filter" class="filter-select"

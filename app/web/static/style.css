@@ -1167,3 +1167,18 @@ a:hover { text-decoration: underline; }
 .order-details-grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; }
 .od-label { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
 .od-value { font-size: 12px; color: var(--text); }
+
+/* ── Flag / Follow-up widget ──────────────────────────────────────────────── */
+.flag-widget { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.flag-form { display: flex; flex-direction: column; gap: 6px; }
+.flag-date-input, .flag-note-input { font-size: 12px; padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text); }
+.btn-flag { font-size: 12px; padding: 4px 10px; background: var(--bg-alt); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
+.flag-active { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.flag-icon { font-size: 14px; }
+.flag-due { font-size: 12px; font-weight: 600; color: var(--text); }
+.flag-overdue { color: #ef4444; }
+.flag-note-text { font-size: 12px; color: var(--text-muted); flex: 1; }
+.btn-flag-clear { font-size: 11px; padding: 2px 8px; background: none; border: 1px solid var(--border); border-radius: 4px; cursor: pointer; color: var(--text-muted); }
+.text-danger { color: #ef4444; }
+.flag-row-indicator { margin-left: 4px; font-size: 12px; white-space: nowrap; }
+.flag-row-due { font-size: 11px; color: var(--text-muted); margin-left: 2px; }

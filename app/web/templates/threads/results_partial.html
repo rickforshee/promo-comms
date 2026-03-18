@@ -54,6 +54,9 @@
                     {% if item.has_attachments %}
                     <span class="attach-indicator" title="Has attachments">📎</span>
                     {% endif %}
+                    {% if item.thread.flagged %}
+                    <span class="flag-row-indicator" title="{% if item.thread.flag_due_date %}Due {{ item.thread.flag_due_date.strftime('%b %d') }}{% else %}Flagged for follow-up{% endif %}">🚩{% if item.thread.flag_due_date %}<span class="flag-row-due">{{ item.thread.flag_due_date.strftime('%b %d') }}</span>{% endif %}</span>
+                    {% endif %}
                 </div>
                 <div class="thread-row-meta">
                     {% set s = item.status or 'open' %}

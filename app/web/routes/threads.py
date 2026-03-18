@@ -392,6 +392,9 @@ def _search_thread_ids(q: str, link_filter: str, db: Session, current_user_id: i
         else:
             all_ids = {r.id for r in db.query(Thread.id).all()}
             matched_ids = all_ids - linked
+    elif link_filter == "has_flag":
+        flag_ids = {r.id for r in db.query(Thread.id).filter(Thread.flagged == True).all()}
+        matched_ids = (matched_ids & flag_ids) if q else flag_ids
     elif link_filter == "mine":
         if current_user_id:
             mine_ids = {r.id for r in db.query(Thread.id).filter(Thread.assigned_to == current_user_id).all()}
@@ -837,6 +840,7 @@ async def thread_detail(
         "all_users":     all_users,
         "status_labels": STATUS_LABELS,
         "status_colors": STATUS_COLORS,
+        "today":         date.today(),
     })
 # update thread_detail() to add these two lines before the TemplateResponse:
 #

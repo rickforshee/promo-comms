@@ -256,7 +256,33 @@
 
     </div>
 
-    {# ── Row 2: Recent activity ────────────────────────────────────────── #}
+    {# ── Row 2: Follow-ups ────────────────────────────────────────────── #}
+    <div class="dash-panel" style="margin-bottom:16px;">
+        <div class="dash-panel-header">
+            <span class="dash-panel-title">Follow-ups</span>
+            {% if follow_ups %}
+            <span class="dash-panel-badge">{{ follow_ups | length }}</span>
+            {% endif %}
+        </div>
+        {% if follow_ups %}
+        <table class="dash-table">
+            <tbody>
+                {% for thread in follow_ups %}
+                <tr onclick="window.location='/threads/{{ thread.id }}'">
+                    <td class="td-subject">{{ thread.subject or '(no subject)' }}</td>
+                    <td class="td-muted {% if thread.flag_due_date and thread.flag_due_date < today %}text-danger{% endif %}" style="white-space:nowrap;">
+                        {% if thread.flag_due_date %}{{ thread.flag_due_date.strftime('%b %d') }}{% else %}—{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="dash-empty">No flagged threads.</div>
+        {% endif %}
+    </div>
+
+    {# ── Row 3: Recent activity ────────────────────────────────────────── #}
     <div class="dash-panel">
         <div class="dash-panel-header">
             <span class="dash-panel-title">Recent Activity — Last 24 Hours</span>

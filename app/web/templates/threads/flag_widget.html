@@ -1,0 +1,30 @@
+<div id="flag-widget-{{ thread.id }}" class="flag-widget">
+  {% if thread.flagged %}
+  <div class="flag-active">
+    <span class="flag-icon">🚩</span>
+    {% if thread.flag_due_date %}
+    <span class="flag-due {% if thread.flag_due_date < today %}flag-overdue{% endif %}">
+      Due {{ thread.flag_due_date.strftime('%b %d') }}
+    </span>
+    {% endif %}
+    {% if thread.flag_note %}<span class="flag-note-text">{{ thread.flag_note }}</span>{% endif %}
+    <button class="btn-flag-clear"
+      hx-post="/threads/{{ thread.id }}/flag"
+      hx-target="#flag-widget-{{ thread.id }}"
+      hx-swap="outerHTML"
+      hx-vals='{"flagged": "false"}'>
+      Clear
+    </button>
+  </div>
+  {% else %}
+  <form hx-post="/threads/{{ thread.id }}/flag"
+        hx-target="#flag-widget-{{ thread.id }}"
+        hx-swap="outerHTML"
+        class="flag-form">
+    <input type="hidden" name="flagged" value="true">
+    <input type="date" name="flag_due_date" class="flag-date-input" placeholder="Due date (optional)">
+    <input type="text" name="flag_note" class="flag-note-input" placeholder="Note (optional)" maxlength="500">
+    <button type="submit" class="btn-flag">🚩 Flag for follow-up</button>
+  </form>
+  {% endif %}
+</div>
