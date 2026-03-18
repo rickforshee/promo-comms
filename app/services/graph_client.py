@@ -1,6 +1,9 @@
+import logging
 import requests
 from msal import ConfidentialClientApplication
 from app import config
+
+log = logging.getLogger(__name__)
 
 
 class GraphClient:
@@ -115,7 +118,39 @@ class GraphClient:
             f"/attachments/{attachment_id}"
         )
         return self._get(url)
-    
+
+    def archive_message(self, message_id: str) -> None:
+        """Move a message to the Archive folder in the shared mailbox."""
+        mailbox = config.SHARED_MAILBOX
+        url = f"{config.GRAPH_BASE_URL}/users/{mailbox}/messages/{message_id}/move"
+        try:
+            self._post(url, json={"destinationId": "archive"})
+            log.info("Archived message %s", message_id)
+        except Exception:
+            log.exception("Failed to archive message %s — continuing", message_id)
+
+    def archive_thread_messages(self, thread_id: int, db) -> int:
+        """Archive all inbound M365 messages on a thread. Returns count archived."""
+        from app.models import Email, EmailDirection
+        messages = (
+            db.query(Email)
+            .filter(
+                Email.thread_id == thread_id,
+                Email.direction == EmailDirection.inbound,
+                Email.message_id.isnot(None),
+            )
+            .all()
+        )
+        count = 0
+        for msg in messages:
+            # Skip synthetic outbound-* IDs we generate ourselves
+            if msg.message_id.startswith("outbound-"):
+                continue
+            self.archive_message(msg.message_id)
+            count += 1
+        log.info("Archived %d messages for thread %s", count, thread_id)
+        return count
+
     def reply_to_message(
         self,
         message_id: str,

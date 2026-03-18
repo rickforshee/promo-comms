@@ -1,9 +1,15 @@
+import logging
+
 from fastapi import APIRouter, Depends, Request, Form
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 
+from app import config
+from app.services.graph_client import GraphClient
 from app.web.auth import get_current_user, get_db
 from app.models import Thread, User
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -46,6 +52,14 @@ async def update_status(
 
     thread.status = status
     db.commit()
+
+    if status in ("resolved", "closed") and not config.DRY_RUN:
+        try:
+            GraphClient().archive_thread_messages(thread_id, db)
+        except Exception:
+            logger.exception("Archive failed for thread %s — status still updated", thread_id)
+    elif status in ("resolved", "closed") and config.DRY_RUN:
+        logger.info("DRY RUN — would have archived messages for thread %s", thread_id)
 
     return _templates.TemplateResponse("threads/status_widget.html", {
         "request":       request,
