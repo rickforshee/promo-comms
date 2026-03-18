@@ -11,11 +11,6 @@ links to Pace ERP records, and manages proof approval workflows.
 - Deployed on Dev1 (Ubuntu VM, dev1.vividimpact.com:8000)
 
 ## Services — ALWAYS restart both after code changes
-- promo-comms.service → uvicorn web server (port 8000)
-  ExecStart: venv/bin/uvicorn app.web.main:app --host 0.0.0.0 --port 8000
-- promo-scheduler.service → APScheduler background tasks
-  ExecStart: venv/bin/python -m app.scheduler --no-historical
-Both must be restarted after code changes:
   sudo systemctl restart promo-comms.service promo-scheduler.service
 
 ## Key paths
@@ -35,19 +30,31 @@ Both must be restarted after code changes:
 
 ## Phase status
 Phase 1 ✅ Complete — ingestion, Pace cache, job/PO linking, historical import
-Phase 2 ✅ Complete — outbound reply, notes, status, assignment, proof workflow, dashboard
-Phase 3 🔄 Current — Search & Reporting
+Phase 2 ✅ Complete — outbound reply, notes, status, assignment, proof workflow, dashboard, proof notifications (DRY_RUN=true in .env — flip to false for production)
+Phase 3 ✅ Complete — full-text search, filtered search, reports, CSV export, shipment tracking detection (UPS + FedEx)
+Phase 4 🔄 In Progress — admin/profile done, mailbox hygiene done
 
-## Phase 3 scope
-1. Full-text search across email subjects, bodies, and internal notes
-2. Filtered search by sender, date, job#, PO#, vendor, status
-3. Communication volume reports by type, vendor, team member, date range
-4. Stale item reports — open threads with no activity past configurable threshold
-5. CSV export of search results and reports
+## Phase 4 remaining
+- M365 SSO
+- Email templates
+- Reporting enhancements (proof cycle time)
+- UI refinements
 
-## Current state (as of March 14, 2026)
+## Production cutover checklist
+- Set DRY_RUN=false in .env
+- Restart both services
+- Verify notify_client_proof_sent fires to real client addresses
+- Verify notify_vivid_proof_decided fires back to shared mailbox
+- Verify mailbox archiving on Resolved/Closed
+
+## Service definitions (DO NOT CHANGE)
+promo-comms.service → uvicorn web server port 8000
+  ExecStart: venv/bin/uvicorn app.web.main:app --host 0.0.0.0 --port 8000
+promo-scheduler.service → APScheduler --no-historical
+  ExecStart: venv/bin/python -m app.scheduler --no-historical
+
+## Current state
 - DRY_RUN=true in .env — proof notifications log but do not send
-- Flip DRY_RUN=false when ready for live notification testing
 - ALLOWED_EMAIL_DOMAINS still in config.py (legacy, superseded by DRY_RUN)
 - GitHub remote: https://github.com/rickforshee/promo-comms.git
 
