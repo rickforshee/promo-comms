@@ -11,9 +11,12 @@ links to Pace ERP records, and manages proof approval workflows.
 - Deployed on Dev1 (Ubuntu VM, dev1.vividimpact.com:8000)
 
 ## Services — ALWAYS restart both after code changes
-- promo-comms.service (uvicorn web server, port 8000)
-- promo-scheduler.service (APScheduler background tasks)
-- Command: sudo systemctl restart promo-comms.service promo-scheduler.service
+- promo-comms.service → uvicorn web server (port 8000)
+  ExecStart: venv/bin/uvicorn app.web.main:app --host 0.0.0.0 --port 8000
+- promo-scheduler.service → APScheduler background tasks
+  ExecStart: venv/bin/python -m app.scheduler --no-historical
+Both must be restarted after code changes:
+  sudo systemctl restart promo-comms.service promo-scheduler.service
 
 ## Key paths
 - Repo: ~/promo-comms/
