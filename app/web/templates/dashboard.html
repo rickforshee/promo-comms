@@ -270,7 +270,7 @@
                 {% for thread in follow_ups %}
                 <tr onclick="window.location='/threads/{{ thread.id }}'">
                     <td class="td-subject">{{ thread.subject or '(no subject)' }}</td>
-                    <td class="td-muted {% if thread.flag_due_date and thread.flag_due_date < today %}text-danger{% endif %}" style="white-space:nowrap;">
+                    <td class="td-muted {% if thread.flag_due_date is not none and thread.flag_due_date < today %}text-danger{% endif %}" style="white-space:nowrap;">
                         {% if thread.flag_due_date %}{{ thread.flag_due_date.strftime('%b %d') }}{% else %}—{% endif %}
                     </td>
                 </tr>
@@ -304,7 +304,8 @@
                 {% for t in recent_threads %}
                 <tr onclick="window.location='/threads/{{ t.id }}'">
                     <td class="td-subject">{{ t.subject or '(no subject)' }}</td>
-                    <td><span class="pill pill--{{ t.status.value }}">{{ t.status.value }}</span></td>
+                    {% set status_val = t.status.value if t.status is not string else t.status %}
+                    <td><span class="pill pill--{{ status_val }}">{{ status_val }}</span></td>
                     <td class="td-muted">
                         {% if t.assignee %}{{ t.assignee.display_name }}{% else %}—{% endif %}
                     </td>
